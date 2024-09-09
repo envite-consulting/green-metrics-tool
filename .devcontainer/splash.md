@@ -27,7 +27,7 @@ source venv/bin/activate
 Für eine erste kurze Energiemessung kann folgender Befehl genutzt werden:
 
 ```sh
-python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --dev-no-optimizations --dev-no-build
+python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --dev-no-optimizations
 ```
 
 `runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Repository `/workspaces/green-metrics-tool/example-applications` genutzt. Das Nutzungsszenario führt das Linux `stress`-Kommando für 5 Sekunden aus, was die CPU stark auslastet.
@@ -48,13 +48,13 @@ Hierfür nutzen wir eine von uns vorbereitete Spring Boot Demoapplikation in zwe
 Energiemessung Modulith:
 
 ```sh
-python3 runner.py --name "Modulith" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-artillery.yml" --skip-system-checks --dev-no-build --skip-unsafe
+python3 runner.py --name "Modulith" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load+single.yml" --skip-system-checks --dev-no-optimizations --skip-unsafe
 ```
 
 Energiemessung Microservices:
 
 ```sh
-python3 runner.py --name "Microservices" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-artillery.yml" --skip-system-checks --dev-no-build --skip-unsafe
+python3 runner.py --name "Microservices" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load+single.yml" --skip-system-checks --dev-no-optimizations --skip-unsafe
 ```
 
 Die Ergebnisse lassen sich wieder im GMT-Frontend betrachten (Tab wechseln bzw. im Tab "Ports" Adresse mit dem Port 9143 öffnen).
