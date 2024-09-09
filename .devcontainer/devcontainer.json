@@ -12,7 +12,7 @@
     "customizations": {
         "codespaces": {
             "openFiles": [
-                ".devcontainer/isaqb-green/splash.md"
+                ".devcontainer/splash.md"
             ]
         },
         "vscode": {
