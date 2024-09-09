@@ -109,14 +109,9 @@ async def catch_exceptions_middleware(request: Request, call_next):
 # Otherwise CORS will not be sent in response
 app.middleware('http')(catch_exceptions_middleware)
 
-origins = [
-    GlobalConfig().config['cluster']['metrics_url'],
-    GlobalConfig().config['cluster']['api_url'],
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=GlobalConfig().config['cluster']['cors_allowed_origins'],
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -1065,7 +1060,7 @@ async def software_add(software: Software):
         raise RequestValidationError('Machine does not exist')
 
 
-    if software.schedule_mode not in ['one-off', 'time', 'commit', 'variance']:
+    if software.schedule_mode not in ['one-off', 'daily', 'weekly', 'commit', 'variance']:
         raise RequestValidationError(f"Please select a valid measurement interval. ({software.schedule_mode}) is unknown.")
 
     # notify admin of new add
@@ -1073,7 +1068,7 @@ async def software_add(software: Software):
         Job.insert('email', name='New run added from Web Interface', message=str(software), email=notification_email)
 
 
-    if software.schedule_mode in ['time', 'commit']:
+    if software.schedule_mode in ['daily', 'weekly', 'commit']:
         TimelineProject.insert(software.name, software.url, software.branch, software.filename, software.machine_id, software.schedule_mode)
 
     # even for timeline projects we do at least one run
@@ -1373,8 +1368,8 @@ class EnergyData(BaseModel):
     machine: UUID
     project: Optional[str] = None
     tags: Optional[str] = None
-    time_stamp: str
-    energy_value: str
+    time_stamp: str # is expected to be in microseconds
+    energy_value: str # is expected to be in mJ
 
     @field_validator('company', 'project', 'tags')
     @classmethod
