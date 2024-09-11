@@ -58,11 +58,3 @@ python3 runner.py --name "Microservices" --uri "https://gitlab.com/envite-consul
 ```
 
 Die Ergebnisse lassen sich wieder im GMT-Frontend betrachten (Tab wechseln bzw. im Tab "Ports" Adresse mit dem Port 9143 öffnen).
-
-## Troubleshooting
-
-### Frontend ist nicht erreichbar
-
-Stelle sicher, dass die beiden Ports 9142 (`api`) und 9143 (`metrics page`) öffentlich sind (`Visibility=Public`). Wenn dies nicht der Fall ist, stelle diese auf öffentlich.
-Wenn die Ports auf privat gestellt sind, wird das Frontend aufgrund von CORS nicht auf die API von GMT zugreifen können.
-Nach einem Neustart des Codespace sind alle Ports auf privat gesetzt, so dass die Änderung nach jedem Neustart manuell vorgenommen werden muss.
