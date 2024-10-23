@@ -1,20 +1,16 @@
 # iSAQB GREEN - Green Metrics Tool
 
-Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe des Green Metric Tools (GMT).
+Dieser Gitpod dient zur Ausführung von Energiemessungen mithilfe des Green Metric Tools (GMT).
 
-Bei einem GitHub Codespace handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
+Bei einem Gitpod handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
 
-Im Rahmen des iSAQB GREEN-Kurses verwenden wir trotzdem GitHub Codespaces, um Ihnen eine einfach nutzbare Umgebung ohne Installationsaufwand bereitstellen zu können.
+Im Rahmen des iSAQB GREEN-Kurses verwenden wir trotzdem Gitpod, um Ihnen eine einfach nutzbare Umgebung ohne Installationsaufwand bereitstellen zu können.
 
 ## Einrichtung
 
 Führen Sie bitte zunächst folgenden Befehl aus:
 
-```sh
-bash .devcontainer/codespace-setup.sh
-```
-
-Die Ausführung des Skripts benötigt etwa 3 Minuten. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die aufgrund von GitHub Codespaces nötig sind.
+Die Ausführung des Skripts benötigt etwas Zeit. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die aufgrund von Gitpod nötig sind.
 
 Führen Sie anschließend noch folgenden Befehl aus (aktiviert eine virtuelle Umgebung für Python):
 
@@ -27,10 +23,10 @@ source venv/bin/activate
 Für eine erste kurze Energiemessung kann folgender Befehl genutzt werden:
 
 ```sh
-python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --dev-no-optimizations
+python3 runner.py --name "Simple Stress Test" --uri "$(pwd)/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --dev-no-optimizations
 ```
 
-`runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Repository `/workspaces/green-metrics-tool/example-applications` genutzt. Das Nutzungsszenario führt das Linux `stress`-Kommando für 5 Sekunden aus, was die CPU stark auslastet.
+`runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Repository `example-applications` genutzt. Das Nutzungsszenario führt das Linux `stress`-Kommando für 5 Sekunden aus, was die CPU stark auslastet.
 
 Das Frontend vom Green Metrics Tool mit den Messergebnissen lässt sich wie folgt aufrufen:
 
