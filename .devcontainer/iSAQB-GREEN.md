@@ -1,22 +1,17 @@
-# iSAQB GREEN - Green Metrics Tool
+# iSAQB GREEN - Green Metrics Tool (Gitpod setup)
 
-Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe des Green Metric Tools (GMT).
+Dieser Gitpod dient zur Ausführung von Energiemessungen mithilfe des Green Metric Tools (GMT).
 
-Bei einem GitHub Codespace handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
+Bei einem Gitpod handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
 
-Im Rahmen des iSAQB GREEN-Kurses verwenden wir trotzdem GitHub Codespaces, um Ihnen eine einfach nutzbare Umgebung ohne Installationsaufwand bereitstellen zu können.
+Im Rahmen des iSAQB GREEN-Kurses verwenden wir trotzdem Gitpod, um Ihnen eine einfach nutzbare Umgebung ohne Installationsaufwand bereitstellen zu können.
 
 ## Einrichtung
 
-Führen Sie bitte zunächst folgenden Befehl im Terminal aus:
+Im Hintergrund wird bzw. wurde bereits das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die aufgrund von Gitpod nötig sind.
+Den aktuellen Status können Sie im Tab "Gitpod Environment" beim Task "Setup Green Metrics Tool" sehen.
 
-```sh
-bash .devcontainer/codespace-setup.sh
-```
-
-Die Ausführung des Skripts benötigt etwa 5 Minuten. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die aufgrund von GitHub Codespaces nötig sind.
-
-Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python):
+Führen Sie anschließend noch folgenden Befehl im Terminal von VS Code aus (aktiviert eine virtuelle Umgebung für Python):
 
 ```sh
 source venv/bin/activate

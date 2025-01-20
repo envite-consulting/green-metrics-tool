@@ -4,13 +4,6 @@
 
 Make sure the ports 9142 (`api`) und 9143 (`metrics page`) are public. If they are private, the metrics frontend will not be able to access the API due to CORS issues. After a restart of the codespace the ports are set to private, so you have to change the visibility manually.
 
-You can use the following commands in the terminal to make the ports public:
-
-```sh
-gh codespace ports visibility 9142:public -c $CODESPACE_NAME
-gh codespace ports visibility 9143:public -c $CODESPACE_NAME
-```
-
 ## Connection to server failed
 
 If you entcounter an error like

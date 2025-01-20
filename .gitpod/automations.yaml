@@ -1,0 +1,7 @@
+tasks:
+    setup-gmt:
+        name: Setup Green Metrics Tool
+        command: |
+            bash .devcontainer/gitpod-setup.sh
+        triggeredBy:
+            - postEnvironmentStart

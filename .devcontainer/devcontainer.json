@@ -1,5 +1,10 @@
+// The Dev Container format allows you to configure your environment. At the heart of it
+// is a Docker image or Dockerfile which controls the tools available in your environment.
+//
+// See https://aka.ms/devcontainer.json for more information.
 {
-    "postStartCommand": "/workspaces/green-metrics-tool/.devcontainer/on-start.sh",
+    "image": "mcr.microsoft.com/devcontainers/universal:focal",  // Universal image includes all dependencies we need, including Python and Docker
+    "postStartCommand": "bash .devcontainer/on-start.sh",
     "forwardPorts": [9142, 9143],
     "portsAttributes": {
         "9143": {
@@ -10,11 +15,6 @@
         }
     },
     "customizations": {
-        "codespaces": {
-            "openFiles": [
-                ".devcontainer/iSAQB-GREEN.md"
-            ]
-        },
         "vscode": {
             "settings": {
                 "workbench.editorAssociations": {
