@@ -24,14 +24,104 @@ CREATE TRIGGER users_moddatetime
     EXECUTE PROCEDURE moddatetime (updated_at);
 
 -- Default password for authentication is DEFAULT
-INSERT INTO "public"."users"("id","name","token","capabilities","created_at","updated_at")
-VALUES
-(1, E'DEFAULT',E'89dbf71048801678ca4abfbaa3ea8f7c651aae193357a3e23d68e21512cd07f5',E'{"user":{"visible_users":[0,1],"is_super_user": true},"api":{"quotas":{},"routes":["/v1/machines","/v1/jobs","/v1/notes/{run_id}","/v1/network/{run_id}","/v1/repositories","/v1/runs","/v1/compare","/v1/phase_stats/single/{run_id}","/v1/measurements/single/{run_id}","/v1/diff","/v1/run/{run_id}","/v1/optimizations/{run_id}","/v1/timeline-projects","/v1/badge/single/{run_id}","/v1/badge/timeline","/v1/timeline","/v1/ci/measurement/add","/v1/ci/measurements","/v1/ci/badge/get","/v1/ci/runs","/v1/ci/repositories","/v1/ci/stats","/v2/ci/measurement/add","/v1/software/add","/v1/authentication/data"]},"data":{"runs":{"retention":2678400},"measurements":{"retention":2678400},"ci_measurements":{"retention":2678400}},"jobs":{"schedule_modes":["one-off","daily","weekly","commit","variance","tag","commit-variance","tag-variance"]},"machines":[1],"measurement":{"quotas":{},"settings":{"total-duration":86400,"flow-process-duration":86400}},"optimizations":["container_memory_utilization","container_cpu_utilization","message_optimization","container_build_time","container_boot_time","container_image_size"]}',E'2024-08-22 11:28:24.937262+00',NULL);
+INSERT INTO "public"."users"(
+    "id",
+    "name",
+    "token",
+    "capabilities",
+    "created_at",
+    "updated_at"
+)
+VALUES (
+    1,
+    E'DEFAULT',
+    E'89dbf71048801678ca4abfbaa3ea8f7c651aae193357a3e23d68e21512cd07f5',
+    E'{
+        "user": {
+            "visible_users": [0,1],
+            "is_super_user": true,
+            "updateable_settings": ["measurement.disabled_metric_providers","measurement.flow_process_duration","measurement.total_duration"]
+        },
+        "api": {
+            "quotas": {},
+            "routes": [
+                "/v1/insights",
+                "/v1/ci/insights",
+                "/v1/machines",
+                "/v2/jobs",
+                "/v1/notes/{run_id}",
+                "/v1/network/{run_id}",
+                "/v1/repositories",
+                "/v2/runs",
+                "/v1/compare",
+                "/v1/phase_stats/single/{run_id}",
+                "/v1/measurements/single/{run_id}",
+                "/v1/diff",
+                "/v2/run/{run_id}",
+                "/v1/optimizations/{run_id}",
+                "/v1/watchlist",
+                "/v1/badge/single/{run_id}",
+                "/v1/badge/timeline",
+                "/v1/timeline",
+                "/v1/ci/measurement/add",
+                "/v1/ci/measurements",
+                "/v1/ci/badge/get",
+                "/v1/ci/runs",
+                "/v1/ci/repositories",
+                "/v1/ci/stats",
+                "/v2/ci/measurement/add",
+                "/v1/software/add",
+                "/v1/user/settings",
+                "/v1/user/setting"
+            ]
+        },
+        "data": {
+            "runs": {"retention": 2678400},
+            "measurements": {"retention": 2678400},
+            "ci_measurements": {"retention": 2678400}
+        },
+        "jobs": {
+            "schedule_modes": [
+                "one-off",
+                "daily",
+                "weekly",
+                "commit",
+                "variance",
+                "tag",
+                "commit-variance",
+                "tag-variance"
+            ]
+        },
+        "machines": [1],
+        "measurement": {
+            "quotas": {},
+            "total_duration": 86400,
+            "flow_process_duration": 86400,
+            "orchestrators": {
+                "docker": {
+                    "allowed_run_args": []
+                }
+            },
+            "disabled_metric_providers": []
+        },
+        "optimizations": [
+            "container_memory_utilization",
+            "container_cpu_utilization",
+            "message_optimization",
+            "container_build_time",
+            "container_boot_time",
+            "container_image_size"
+        ]
+    }',
+    E'2024-08-22 11:28:24.937262+00',
+    NULL
+);
+
 
 -- Default password for user 0 is empty
 INSERT INTO "public"."users"("id", "name","token","capabilities","created_at","updated_at")
 VALUES
-(0, E'[GMT-SYSTEM]',E'',E'{"user":{"is_super_user": false},"api":{"quotas":{},"routes":[]},"data":{"runs":{"retention":2678400},"hog_tasks":{"retention":2678400},"measurements":{"retention":2678400},"hog_coalitions":{"retention":2678400},"ci_measurements":{"retention":2678400},"hog_measurements":{"retention":2678400}},"jobs":{"schedule_modes":[]},"machines":[],"measurement":{"quotas":{},"settings":{"total-duration":86400,"flow-process-duration":86400}},"optimizations":[]}',E'2024-11-06 11:28:24.937262+00',NULL);
+(0, E'[GMT-SYSTEM]',E'',E'{"user":{"is_super_user": false},"api":{"quotas":{},"routes":[]},"data":{"runs":{"retention":2678400},"measurements":{"retention":2678400},"ci_measurements":{"retention":2678400}},"jobs":{"schedule_modes":[]},"machines":[],"measurement":{"quotas":{},"settings":{"total_duration":86400,"flow_process_duration":86400}},"optimizations":[]}',E'2024-11-06 11:28:24.937262+00',NULL);
 
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 
@@ -71,6 +161,7 @@ CREATE TABLE jobs (
     url text,
     branch text,
     filename text,
+    usage_scenario_variables jsonb NOT NULL DEFAULT '{}',
     categories int[],
     machine_id int REFERENCES machines(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     message text,
@@ -93,6 +184,7 @@ CREATE TABLE runs (
     commit_timestamp timestamp with time zone,
     categories int[],
     usage_scenario json,
+    usage_scenario_variables jsonb NOT NULL DEFAULT '{}',
     filename text NOT NULL,
     machine_specs jsonb,
     runner_arguments json,
@@ -128,6 +220,7 @@ CREATE INDEX measurement_metrics_build_and_store_phase_stats ON measurement_metr
 CREATE INDEX measurement_metrics_build_phases ON measurement_metrics(metric,detail_name,unit);
 
 CREATE TABLE measurement_values (
+    id SERIAL PRIMARY KEY, -- although not strictly needed PostgreSQL seems to perform way better with it and can vacuum more efficiently
     measurement_metric_id int NOT NULL REFERENCES measurement_metrics(id) ON DELETE CASCADE ON UPDATE CASCADE,
     value bigint NOT NULL,
     time bigint NOT NULL
@@ -224,6 +317,7 @@ CREATE TABLE ci_measurements (
     carbon_intensity_g int,
     carbon_ug bigint,
     ip_address INET,
+    note text CHECK (length(note) <= 1024),
     filter_type text NOT NULL,
     filter_project text NOT NULL,
     filter_machine text NOT NULL,
@@ -253,13 +347,15 @@ CREATE TRIGGER client_status_moddatetime
     FOR EACH ROW
     EXECUTE PROCEDURE moddatetime (updated_at);
 
-CREATE TABLE timeline_projects (
+CREATE TABLE watchlist (
     id SERIAL PRIMARY KEY,
     name text,
-    url text,
+    image_url text,
+    repo_url text,
     categories integer[],
     branch text NOT NULL,
     filename text NOT NULL,
+    usage_scenario_variables jsonb NOT NULL DEFAULT '{}',
     machine_id integer REFERENCES machines(id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL,
     schedule_mode text NOT NULL,
     last_scheduled timestamp with time zone,
@@ -268,8 +364,8 @@ CREATE TABLE timeline_projects (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone
 );
-CREATE TRIGGER timeline_projects_moddatetime
-    BEFORE UPDATE ON timeline_projects
+CREATE TRIGGER watchlist_moddatetime
+    BEFORE UPDATE ON watchlist
     FOR EACH ROW
     EXECUTE PROCEDURE moddatetime (updated_at);
 

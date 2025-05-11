@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, constr
+from typing import Optional, Dict
 
 from fastapi.exceptions import RequestValidationError
 
@@ -7,17 +7,26 @@ from fastapi.exceptions import RequestValidationError
 
 class Software(BaseModel):
     name: str
-    url: str
-    email: str
+    image_url: Optional[str] = None
+    repo_url: str
+    email: Optional[str] = None
     filename: str
     branch: str
     machine_id: int
     schedule_mode: str
+    usage_scenario_variables: Optional[Dict[str, str]] = None
 
     model_config = ConfigDict(extra='forbid')
 
+### User Settings Update
 
-### Eco-CI
+class UserSetting(BaseModel):
+    name: str
+    value: str | list
+
+    model_config = ConfigDict(extra='forbid')
+
+### Eco CI
 # pylint: disable=invalid-name
 class CI_Measurement_Old(BaseModel):
     energy_value: int
@@ -78,6 +87,7 @@ class CI_Measurement(BaseModel):
     carbon_intensity_g: Optional[int] = None
     carbon_ug: Optional[int] = None
     ip: Optional[str] = None
+    note: Optional[constr(max_length=1024)] = None
 
     model_config = ConfigDict(extra='forbid')
 

@@ -1,7 +1,23 @@
 $(document).ready(function () {
     (async () => {
+
+        let machines_data = null;
+        let jobs_data = null;
+
+        try {
+            machines_data = await makeAPICall('/v1/machines')
+        } catch (err) {
+            showNotification('Could not get machines data from API', err); // we do not return here, as empty data is an OK response
+        }
+
+        try {
+            jobs_data = await makeAPICall('/v2/jobs')
+        } catch (err) {
+            showNotification('Could not get jobs data from API', err); // we do not return here, as empty data is an OK response
+        }
+
         $('#machines-table').DataTable({
-            ajax: `${API_URL}/v1/machines`,
+            data: machines_data?.data,
             searching: false,
             columns: [
                 { data: 0, title: 'ID'},
@@ -63,20 +79,26 @@ $(document).ready(function () {
         });
 
         $('#jobs-table').DataTable({
-            ajax: `${API_URL}/v1/jobs`,
+            data: jobs_data?.data,
             columns: [
                 { data: 0, title: 'ID'},
                 { data: 2, title: 'Name', render: (name, type, row) => row[1] == null ? name : `<a href="/stats.html?id=${row[1]}">${name}</a>`  },
                 { data: 3, title: 'Url'},
-                { data: 4, title: 'Filename'},
-                { data: 5, title: 'Branch'},
-                { data: 6, title: 'Machine'},
-                { data: 7, title: 'State'},
-                { data: 9, title: 'Created at', render: (el) => el == null ? '-' : dateToYMD(new Date(el)) },
-                { data: 8, title: 'Updated at', render: (el) => el == null ? '-' : dateToYMD(new Date(el)) },
+                {
+                    data: 4,
+                    title: 'Filename',
+                    render: function(el, type, row) {
+                        const usage_scenario_variables = Object.entries(row[5]).map(([k, v]) => `<span class="ui label">${k}=${v}</span>`);
+                        return `${el} ${usage_scenario_variables.join(' ')}`
+                    }},
+                { data: 6, title: 'Branch'},
+                { data: 7, title: 'Machine'},
+                { data: 8, title: 'State'},
+                { data: 10, title: 'Created at', render: (el) => el == null ? '-' : dateToYMD(new Date(el)) },
+                { data: 9, title: 'Updated at', render: (el) => el == null ? '-' : dateToYMD(new Date(el)) },
             ],
             deferRender: true,
-            order: [[7, 'desc']] // API also orders, but we need to indicate order for the user
+            order: [[8, 'desc']] // API also orders, but we need to indicate order for the user
         });
 
 

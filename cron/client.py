@@ -25,6 +25,12 @@ STATUS_LIST = ['cooldown', 'warmup', 'job_no', 'job_start', 'job_error', 'job_en
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def set_status(status_code, cur_temp, cooldown_time_after_job, data=None, run_id=None):
+    if not hasattr(set_status, "last_status"):
+        set_status.last_status = status_code  # static variable
+    elif set_status.last_status == status_code:
+        return # no need to update status, if it has not changed since last time
+    set_status.last_status = status_code
+
     # pylint: disable=redefined-outer-name
     config = GlobalConfig().config
     client = config['cluster']['client']
@@ -93,6 +99,7 @@ if __name__ == '__main__':
         last_cooldown_time = 0
         current_temperature = -1
         temperature_errors = 0
+        last_cleanup = 0
 
         while True:
             job = Job.get_job('run')
@@ -103,13 +110,18 @@ if __name__ == '__main__':
                 continue
 
             if not args.testing:
-                if temperature_errors >= 10:
-                    raise RuntimeError('Temperature could not be stabilized in time. Pleae check logs ...')
+
+                if last_cleanup < (time.time() - 43200): # every 12 hours
+                    do_cleanup(current_temperature, last_cooldown_time)
+                    last_cleanup = time.time()
 
                 current_temperature = get_temperature(
                     GlobalConfig().config['machine']['base_temperature_chip'],
                     GlobalConfig().config['machine']['base_temperature_feature']
                 )
+
+                if temperature_errors >= 10:
+                    raise RuntimeError(f"Temperature could not be stabilized in time. Was {current_temperature} but should be {GlobalConfig().config['machine']['base_temperature_value']}. Pleae check logs ...")
 
                 if current_temperature > config_main['machine']['base_temperature_value']:
                     print(f"Machine is still too hot: {current_temperature}°. Sleeping for 1 minute")
@@ -125,7 +137,7 @@ if __name__ == '__main__':
                     set_status('warmup', current_temperature, last_cooldown_time)
                     temperature_errors += 1
                     current_time = time.time()
-                    while True:
+                    while True: # spinlock
                         if time.time() > (current_time + 10):
                             break
                     continue # still retry loop and make all checks again
@@ -160,8 +172,6 @@ if __name__ == '__main__':
                     # endlessly in validation until manually handled, which is what we want.
                     if not args.testing:
                         time.sleep(client_main['time_between_control_workload_validations'])
-                finally:
-                    do_cleanup(current_temperature, last_cooldown_time)
 
             elif job:
                 set_status('job_start', current_temperature, last_cooldown_time, run_id=job._run_id)
@@ -171,26 +181,24 @@ if __name__ == '__main__':
                 except ConfigurationCheckError as exc: # ConfigurationChecks indicate that before the job ran, some setup with the machine was incorrect. So we soft-fail here with sleeps
                     set_status('job_error', current_temperature, last_cooldown_time, data=str(exc), run_id=job._run_id)
                     if exc.status == Status.WARN: # Warnings is something like CPU% too high. Here short sleep
-                        error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, status=exc.status, run_id=job._run_id, name=job._name, url=job._url, machine=config_main['machine']['description'], sleep_duration=600)
+                        error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, previous_exception=exc.__context__, status=exc.status, run_id=job._run_id, name=job._name, url=job._url, machine=config_main['machine']['description'], sleep_duration=600)
                         if not args.testing:
                             time.sleep(600)
                     else: # Hard fails won't resolve on it's own. We sleep until next cluster validation
-                        error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, status=exc.status, run_id=job._run_id, name=job._name, url=job._url, machine=config_main['machine']['description'], sleep_duration=client_main['time_between_control_workload_validations'])
+                        error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, previous_exception=exc.__context__, status=exc.status, run_id=job._run_id, name=job._name, url=job._url, machine=config_main['machine']['description'], sleep_duration=client_main['time_between_control_workload_validations'])
                         if not args.testing:
                             time.sleep(client_main['time_between_control_workload_validations'])
 
                 except subprocess.CalledProcessError as exc:
                     set_status('job_error', current_temperature, last_cooldown_time, data=str(exc), run_id=job._run_id)
-                    error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, stdout=exc.stdout, stderr=exc.stderr, run_id=job._run_id, machine=config_main['machine']['description'], name=job._name, url=job._url)
+                    error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, previous_exception=exc.__context__, stdout=exc.stdout, stderr=exc.stderr, run_id=job._run_id, machine=config_main['machine']['description'], name=job._name, url=job._url)
                 except Exception as exc: # pylint: disable=broad-except
                     set_status('job_error', current_temperature, last_cooldown_time, data=str(exc), run_id=job._run_id)
-                    error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, run_id=job._run_id, machine=config_main['machine']['description'], name=job._name, url=job._url)
+                    error_helpers.log_error('Job processing in cluster failed (client.py)', exception=exc, previous_exception=exc.__context__, run_id=job._run_id, machine=config_main['machine']['description'], name=job._name, url=job._url)
                 finally:
-                    if not args.testing:
-                        do_cleanup(current_temperature, last_cooldown_time)
+                    temperature_errors = 0 # reset
 
             else:
-                do_cleanup(current_temperature, last_cooldown_time)
                 set_status('job_no', current_temperature, last_cooldown_time)
                 if client_main['shutdown_on_job_no'] is True:
                     subprocess.check_output(['sudo', 'systemctl', 'suspend'])
@@ -201,4 +209,4 @@ if __name__ == '__main__':
                 break
 
     except Exception as exc: # pylint: disable=broad-except
-        error_helpers.log_error(f'Processing in {__file__} failed.', exception=exc, machine=config_main['machine']['description'])
+        error_helpers.log_error(f'Processing in {__file__} failed.', exception=exc, previous_exception=exc.__context__, machine=config_main['machine']['description'])
