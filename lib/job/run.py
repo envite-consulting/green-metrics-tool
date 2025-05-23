@@ -43,7 +43,8 @@ class RunJob(Job):
             uri_type='URL',
             filename=self._filename,
             branch=self._branch,
-            skip_unsafe=True,
+            skip_unsafe=user._capabilities['measurement'].get('skip_unsafe', True),
+            allow_unsafe=user._capabilities['measurement'].get('allow_unsafe', False),
             skip_system_checks=skip_system_checks,
             full_docker_prune=full_docker_prune,
             docker_prune=docker_prune,
@@ -51,6 +52,8 @@ class RunJob(Job):
             user_id=self._user_id,
             usage_scenario_variables=self._usage_scenario_variables,
             measurement_flow_process_duration=user._capabilities['measurement']['flow_process_duration'],
+            dev_no_sleeps=user._capabilities['measurement'].get('dev_no_sleeps', False),
+            dev_no_optimizations=user._capabilities['measurement'].get('dev_no_optimizations', False),
             measurement_total_duration=user._capabilities['measurement']['total_duration'],
             disabled_metric_providers=user._capabilities['measurement']['disabled_metric_providers'],
             allowed_run_args=user._capabilities['measurement']['orchestrators']['docker']['allowed_run_args'], # They are specific to the orchestrator. However currently we only have one. As soon as we support more orchestrators we will sub-class Runner with dedicated child classes (DockerRunner, PodmanRunner etc.)

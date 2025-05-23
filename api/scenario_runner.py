@@ -3,6 +3,7 @@ import re
 import orjson
 from xml.sax.saxutils import escape as xml_escape
 from datetime import date, datetime, timedelta
+import pprint
 
 from fastapi import APIRouter, Response, Depends
 from fastapi.responses import ORJSONResponse
@@ -199,7 +200,7 @@ def old_v1_runs_endpoint():
 
 # A route to return all of the available entries in our catalog.
 @router.get('/v2/runs')
-async def get_runs(uri: str | None = None, branch: str | None = None, machine_id: int | None = None, machine: str | None = None, filename: str | None = None, job_id: int | None = None, limit: int | None = 50, uri_mode = 'none', user: User = Depends(authenticate)):
+async def get_runs(uri: str | None = None, branch: str | None = None, machine_id: int | None = None, machine: str | None = None, filename: str | None = None, job_id: int | None = None, failed: bool | None = None, limit: int | None = 50, uri_mode = 'none', user: User = Depends(authenticate)):
 
     query = '''
             SELECT r.id, r.name, r.uri, r.branch, r.created_at, r.invalid_run, r.filename, r.usage_scenario_variables, m.description, r.commit_hash, r.end_measurement, r.failed, r.machine_id
@@ -237,6 +238,10 @@ async def get_runs(uri: str | None = None, branch: str | None = None, machine_id
     if job_id:
         query = f"{query} AND r.job_id = %s \n"
         params.append(job_id)
+
+    if failed is not None:
+        query = f"{query} AND r.failed = %s \n"
+        params.append(bool(failed))
 
     query = f"{query} ORDER BY r.created_at DESC"
 
@@ -405,7 +410,7 @@ async def get_measurements_single(run_id: str, user: User = Depends(authenticate
     return ORJSONResponseObjKeep({'success': True, 'data': data})
 
 @router.get('/v1/timeline')
-async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = None, filename: str | None = None, start_date: date | None = None, end_date: date | None = None, metrics: str | None = None, phase: str | None = None, sorting: str | None = None, user: User = Depends(authenticate)):
+async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = None, filename: str | None = None, start_date: date | None = None, end_date: date | None = None, metric: str | None = None, phase: str | None = None, sorting: str | None = None, user: User = Depends(authenticate)):
     if uri is None or uri.strip() == '':
         raise RequestValidationError('URI is empty')
 
@@ -414,7 +419,7 @@ async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = Non
 
     check_int_field_api(machine_id, 'machine_id', 1024) # can cause exception
 
-    query, params = get_timeline_query(user, uri, filename, machine_id, branch, metrics, phase, start_date=start_date, end_date=end_date, sorting=sorting)
+    query, params = get_timeline_query(user, uri, filename, machine_id, branch, metric, phase, start_date=start_date, end_date=end_date, sorting=sorting)
 
     data = DB().fetch_all(query, params=params)
 
@@ -658,13 +663,17 @@ async def software_add(software: Software, user: User = Depends(authenticate)):
     if not user.can_use_machine(software.machine_id):
         raise RequestValidationError('Your user does not have the permissions to use that machine.')
 
-    if software.schedule_mode not in ['one-off', 'daily', 'weekly', 'commit', 'commit-variance', 'tag', 'tag-variance', 'variance']:
+    if software.schedule_mode not in ['one-off', 'daily', 'weekly', 'commit', 'commit-variance', 'tag', 'tag-variance', 'variance', 'statistical-significance']:
         raise RequestValidationError(f"Please select a valid measurement interval. ({software.schedule_mode}) is unknown.")
 
     if not user.can_schedule_job(software.schedule_mode):
         raise RequestValidationError('Your user does not have the permissions to use that schedule mode.')
 
-    utils.check_repo(software.repo_url, software.branch) # if it exists through the git api
+    try:
+        utils.check_repo(software.repo_url, software.branch) # if it exists through the git api
+    except ValueError as exc: # We accept the value error here if the repository is unknown, but log it for now
+        error_helpers.log_error('Repository could not be checked in /v1/software/add.', exception=exc)
+
 
     if software.schedule_mode in ['daily', 'weekly', 'commit', 'commit-variance', 'tag', 'tag-variance']:
 
@@ -679,14 +688,19 @@ async def software_add(software: Software, user: User = Depends(authenticate)):
 
     job_ids_inserted = []
 
-    # even for Watchlist items we do at least one run directly
-    amount = 3 if 'variance' in software.schedule_mode else 1
+    if 'variance' in software.schedule_mode:
+        amount = 3
+    elif software.schedule_mode == 'statistical-significance':
+        amount = 30
+    else: # even for Watchlist items we do at least one run directly
+        amount = 1
+
     for _ in range(0,amount):
         job_ids_inserted.append(Job.insert('run', user_id=user._id, name=software.name, url=software.repo_url, email=software.email, branch=software.branch, filename=software.filename, machine_id=software.machine_id, usage_scenario_variables=software.usage_scenario_variables))
 
     # notify admin of new add
     if notification_email := GlobalConfig().config['admin']['notification_email']:
-        Job.insert('email', user_id=user._id, name='New run added from Web Interface', message=str(software), email=notification_email)
+        Job.insert('email', user_id=user._id, name='New run added from Web Interface', message=pprint.pformat(software.model_dump(), width=60, indent=2), email=notification_email)
 
     return ORJSONResponse({'success': True, 'data': job_ids_inserted}, status_code=202)
 

@@ -3,11 +3,11 @@ import os
 from metric_providers.base import BaseMetricProvider
 
 class GpuEnergyNvidiaSmiComponentProvider(BaseMetricProvider):
-    def __init__(self, resolution, skip_check=False):
+    def __init__(self, sampling_rate, skip_check=False):
         super().__init__(
             metric_name='gpu_energy_nvidia_smi_component',
             metrics={'time': int, 'value': int},
-            resolution=resolution,
+            sampling_rate=sampling_rate,
             unit='uJ',
             current_dir=os.path.dirname(os.path.abspath(__file__)),
             metric_provider_executable='metric-provider-nvidia-smi-wrapper.sh',
@@ -47,7 +47,7 @@ class GpuEnergyNvidiaSmiComponentProvider(BaseMetricProvider):
         df['interval'] = intervals  # in microseconds
         # value is initially in milliWatts. So we multiply by 1_000 to get uW and then divide by 1_000_000 to get from us to s  => / 1_000
         df['value'] = df.apply(lambda x: x['value'] * x['interval'] / 1_000, axis=1)
-        df['value'] = df.value.astype(int)
+        df['value'] = df.value.astype('int64')
 
         df = df.drop(columns='interval')  # clean up
 

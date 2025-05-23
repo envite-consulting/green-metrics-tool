@@ -2,6 +2,7 @@ import os
 import string
 import re
 from schema import Schema, SchemaError, Optional, Or, Use, And, Regex
+from datetime import datetime
 
 # https://github.com/compose-spec/compose-spec/blob/master/spec.md
 
@@ -88,13 +89,14 @@ class SchemaChecker():
             "author": And(str, Use(self.not_empty)),
             "description": And(str, Use(self.not_empty)),
             Optional("ignore-unsupported-compose"): bool,
-            Optional("version"): str, # is part of compose. we ignore it as it is non functionaly anyway
+            Optional("version"): Or(str, int, float, datetime), # is part of compose. we ignore it as it is non functionaly anyway
             Optional("architecture"): And(str, Use(self.not_empty)),
             Optional("sci"): {
                 'R_d': And(str, Use(self.not_empty)),
             },
 
             Optional("networks"): Or(list, dict),
+            Optional("volumes"): Or(list, dict), # volumes in the root level are fine. They have no implication alone and will be checked in the service then if listed
 
             Optional("services"): {
 
@@ -113,14 +115,14 @@ class SchemaChecker():
                         Optional('resources'): {
                             Optional('limits'): {
                                 Optional('cpus'): Or(And(str, Use(self.not_empty)), float, int),
-                                Optional('memory') : And(str, Use(self.not_empty)),
+                                Optional('memory') : Or(And(str, Use(self.not_empty)), float, int),
                             }
                         }
                     }, None),
-                    Optional('mem_limit'): And(str, Use(self.not_empty)),
+                    Optional('mem_limit'): Or(And(str, Use(self.not_empty)), float, int),
                     Optional('cpus') : Or(And(str, Use(self.not_empty)), float, int),
                     Optional('container_name'): And(str, Use(self.not_empty)),
-
+                    Optional('shm_size'): Or(And(str, Use(self.not_empty)), float, int),
                     Optional("healthcheck"): {
                         Optional('test'): Or(list, And(str, Use(self.not_empty))),
                         Optional('interval'): And(str, Use(self.not_empty)),

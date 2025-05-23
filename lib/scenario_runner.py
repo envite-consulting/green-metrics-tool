@@ -69,11 +69,12 @@ class ScenarioRunner:
         dev_no_sleeps=False, dev_cache_build=False, dev_no_metrics=False,
         dev_flow_timetravel=False, dev_no_optimizations=False, docker_prune=False, job_id=None,
         user_id=1, measurement_flow_process_duration=None, measurement_total_duration=None, disabled_metric_providers=None, allowed_run_args=None, dev_no_phase_stats=False, dev_no_save=False,
-        skip_volume_inspect=False, commit_hash_folder=None, usage_scenario_variables=None):
+        skip_volume_inspect=False, commit_hash_folder=None, usage_scenario_variables=None, phase_padding=True):
 
         if skip_unsafe is True and allow_unsafe is True:
             raise RuntimeError('Cannot specify both --skip-unsafe and --allow-unsafe')
 
+        config = GlobalConfig().config
         # variables that should not change if you call run multiple times
         if name:
             self._name = name
@@ -104,7 +105,7 @@ class ScenarioRunner:
         self._architecture = utils.get_architecture()
 
         self._sci = {'R_d': None, 'R': 0}
-        self._sci |= GlobalConfig().config.get('sci', None)  # merge in data from machine config like I, TE etc.
+        self._sci |= config.get('sci', None)  # merge in data from machine config like I, TE etc.
 
         self._job_id = job_id
         self._arguments = locals()
@@ -112,6 +113,7 @@ class ScenarioRunner:
         self._run_id = None
         self._commit_hash = None
         self._commit_timestamp = None
+
         self._commit_hash_folder = commit_hash_folder if commit_hash_folder else ''
         self._user_id = user_id
         self._measurement_flow_process_duration = measurement_flow_process_duration
@@ -119,6 +121,11 @@ class ScenarioRunner:
         self._disabled_metric_providers = [] if disabled_metric_providers is None else disabled_metric_providers
         self._allowed_run_args = [] if allowed_run_args is None else allowed_run_args # They are specific to the orchestrator. However currently we only have one. As soon as we support more orchestrators we will sub-class Runner with dedicated child classes (DockerRunner, PodmanRunner etc.)
         self._last_measurement_duration = 0
+        self._phase_padding = phase_padding
+        self._phase_padding_ms = max(
+            utils.get_metric_providers(config, self._disabled_metric_providers).values(),
+            key=lambda x: x.get('sampling_rate', 0) if x else 0
+        ).get('sampling_rate', 0)
 
         del self._arguments['self'] # self is not needed and also cannot be serialzed. We remove it
 
@@ -266,6 +273,8 @@ class ScenarioRunner:
                     encoding='UTF-8'
                 )  # always name target-dir repo according to spec
 
+            if problematic_symlink := utils.find_outside_symlinks(self._repo_folder):
+                raise RuntimeError(f"Repository contained outside symlink: {problematic_symlink}\nGMT cannot handle this in URL or Cluster mode due to security concerns. Please change or remove the symlink or run GMT locally.")
         else:
             if self._branch:
                 # we never want to checkout a local directory to a different branch as this might also be the GMT directory itself and might confuse the tool
@@ -499,6 +508,7 @@ class ScenarioRunner:
         measurement_config['allowed_run_args'] = self._allowed_run_args
         measurement_config['disabled_metric_providers'] = self._disabled_metric_providers
         measurement_config['sci'] = self._sci
+        measurement_config['phase_padding'] = self._phase_padding_ms
 
         # We issue a fetch_one() instead of a query() here, cause we want to get the RUN_ID
         self._run_id = DB().fetch_one("""
@@ -645,6 +655,7 @@ class ScenarioRunner:
 
                 docker_build_command = ['docker', 'run', '--rm',
                     '-v', '/workspace',
+                    # if we ever decide here to copy and not link in read-only we must NOT copy resolved symlinks, as they can be malicious
                     '-v', f"{self._repo_folder}:/tmp/repo:ro", # this is the folder where the usage_scenario is!
                     '-v', f"{temp_dir}:/output",
                     'gcr.io/kaniko-project/executor:latest',
@@ -844,8 +855,10 @@ class ScenarioRunner:
 
             docker_run_string.append('-v')
             if 'folder-destination' in service:
+                 # if we ever decide here to copy and not link in read-only we must NOT copy resolved symlinks, as they can be malicious
                 docker_run_string.append(f"{self._repo_folder}:{service['folder-destination']}:ro")
             else:
+                 # if we ever decide here to copy and not link in read-only we must NOT copy resolved symlinks, as they can be malicious
                 docker_run_string.append(f"{self._repo_folder}:/tmp/repo:ro")
 
             if self.__docker_params:
@@ -891,6 +904,10 @@ class ScenarioRunner:
 
             if service.get('init', False):
                 docker_run_string.append('--init')
+
+            if shm_size := service.get('shm_size', False):
+                docker_run_string.append('--shm-size')
+                docker_run_string.append(str(shm_size))
 
             if 'ports' in service:
                 if self._allow_unsafe:
@@ -1262,6 +1279,11 @@ class ScenarioRunner:
 
         phase_time = int(time.time_ns() / 1_000)
 
+        if self._phase_padding:
+            self.__notes_helper.add_note({'note': f"Ending phase {phase} [UNPADDED]", 'detail_name': '[NOTES]', 'timestamp': phase_time})
+            phase_time += self._phase_padding_ms*1000 # value is in ms and we need to get to us
+            time.sleep(self._phase_padding_ms/1000) # no custom sleep here as even with dev_no_sleeps we must ensure phases don't overlap
+
         if phase not in self.__phases:
             raise RuntimeError('Calling end_phase before start_phase. This is a developer error!')
 
@@ -1269,13 +1291,16 @@ class ScenarioRunner:
             for container_to_pause in self.__services_to_pause_phase[phase]:
                 info_text = f"Pausing {container_to_pause} after phase: {phase}."
                 print(info_text)
-                self.__notes_helper.add_note({'note': info_text, 'detail_name': '[NOTES]', 'timestamp': phase_time})
+                self.__notes_helper.add_note({'note':  info_text, 'detail_name': '[NOTES]', 'timestamp': phase_time})
 
                 subprocess.run(['docker', 'pause', container_to_pause], check=True, stdout=subprocess.DEVNULL)
 
-
         self.__phases[phase]['end'] = phase_time
-        self.__notes_helper.add_note({'note': f"Ending phase {phase}", 'detail_name': '[NOTES]', 'timestamp': phase_time})
+
+        if self._phase_padding:
+            self.__notes_helper.add_note({'note': f"Ending phase {phase} [PADDED]", 'detail_name': '[NOTES]', 'timestamp': phase_time})
+        else:
+            self.__notes_helper.add_note({'note': f"Ending phase {phase} [UNPADDED]", 'detail_name': '[NOTES]', 'timestamp': phase_time})
 
     def run_flows(self):
         ps_to_kill_tmp = []
@@ -1464,7 +1489,11 @@ class ScenarioRunner:
                 errors.append(f"{metric_provider.__class__.__name__} returned error message: {str(exc)}")
                 continue
 
-            metric_importer.import_measurements(df, metric_provider._metric_name, self._run_id)
+            if isinstance(df, list):
+                for i, dfi in enumerate(df):
+                    metric_importer.import_measurements(dfi, metric_provider._sub_metrics_name[i], self._run_id)
+            else:
+                metric_importer.import_measurements(df, metric_provider._metric_name, self._run_id)
 
             print('Imported', TerminalColors.HEADER, len(df), TerminalColors.ENDC, 'metrics from ', metric_provider.__class__.__name__)
 
@@ -1663,7 +1692,8 @@ class ScenarioRunner:
                 )
 
         for argument in self._arguments:
-            if (argument.startswith('dev_') or argument == 'skip_system_checks')  and self._arguments[argument] not in (False, None):
+            # dev no optimizations does not make the run invalid ... all others do
+            if argument != 'dev_no_optimizations' and (argument.startswith('dev_') or argument == 'skip_system_checks')  and self._arguments[argument] not in (False, None):
                 invalid_message = 'Development switches or skip_system_checks were active for this run. This will likely produce skewed measurement data.\n'
                 print(TerminalColors.WARNING, invalid_message, TerminalColors.ENDC)
 
