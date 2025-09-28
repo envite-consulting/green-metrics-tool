@@ -10,9 +10,6 @@ class SchemaChecker():
     def __init__(self, validate_compose_flag):
         self._validate_compose_flag = validate_compose_flag
 
-    def single_or_list(self, value):
-        return Or(value, [value])
-
     def is_valid_string(self, value):
         valid_chars = set(string.ascii_letters + string.digits + '_' + '-')
         if not set(value).issubset(valid_chars):
@@ -85,32 +82,58 @@ class SchemaChecker():
     def check_usage_scenario(self, usage_scenario):
         # Anything with Optional() is not needed, but if it exists must conform to the definition specified
         usage_scenario_schema = Schema({
-            "name": str,
-            "author": And(str, Use(self.not_empty)),
-            "description": And(str, Use(self.not_empty)),
-            Optional("ignore-unsupported-compose"): bool,
-            Optional("version"): Or(str, int, float, datetime), # is part of compose. we ignore it as it is non functionaly anyway
-            Optional("architecture"): And(str, Use(self.not_empty)),
-            Optional("sci"): {
+            'name': str,
+            'author': And(str, Use(self.not_empty)),
+            'description': And(str, Use(self.not_empty)),
+            Optional('ignore-unsupported-compose'): bool,
+            Optional('version'): Or(str, int, float, datetime), # is part of compose. we ignore it as it is non functionaly anyway
+            Optional('architecture'): And(str, Use(self.not_empty)),
+            Optional('sci'): {
                 'R_d': And(str, Use(self.not_empty)),
             },
 
-            Optional("networks"): Or(list, dict),
-            Optional("volumes"): Or(list, dict), # volumes in the root level are fine. They have no implication alone and will be checked in the service then if listed
-
-            Optional("services"): {
-
+            Optional('networks'): Or(
+                dict,
+                [And(str, Use(self.contains_no_invalid_chars))],
+            ),
+            Optional('volumes'): Or(
+                dict,
+                And(str, Use(self.contains_no_invalid_chars))
+            ),
+            Optional('services'): {
                 Use(self.contains_no_invalid_chars): {
-                    Optional("restart"): str, # is part of compose. we ignore it as GMT has own orchestration
-                    Optional("expose"): [str, int], # is part of compose. we ignore it as it is non functionaly anyway
-                    Optional("init"): bool,
-                    Optional("type"): Use(self.valid_service_types),
-                    Optional("image"): And(str, Use(self.not_empty)),
-                    Optional("build"): Or(Or({And(str, Use(self.not_empty)):And(str, Use(self.not_empty))},list),And(str, Use(self.not_empty))),
-                    Optional("networks"): self.single_or_list(Use(self.contains_no_invalid_chars)),
-                    Optional("environment"): self.single_or_list(Or(dict,And(str, Use(self.not_empty)))),
-                    Optional("ports"): self.single_or_list(Or(And(str, Use(self.not_empty)), int)),
-                    Optional('depends_on'): Or([And(str, Use(self.not_empty))],dict),
+                    Optional('restart'): str, # is part of compose. we ignore it as GMT has own orchestration
+                    Optional('expose'): [str, int], # is part of compose. we ignore it as it is non functionaly anyway
+                    Optional('init'): bool,
+                    Optional('type'): Use(self.valid_service_types),
+                    Optional('image'): And(str, Use(self.not_empty)),
+                    Optional('build'): Or(Or({And(str, Use(self.not_empty)):And(str, Use(self.not_empty))},list),And(str, Use(self.not_empty))),
+                    Optional('networks'): Or(
+                        [And(str, Use(self.contains_no_invalid_chars))],
+                        {
+                            Use(self.contains_no_invalid_chars):
+                                Or(
+                                    None,
+                                    { 'aliases': [Use(self.contains_no_invalid_chars)] }
+                                )
+                        }
+                    ),
+                    Optional('environment'): Or(
+                        dict,
+                        [And(str, Use(self.not_empty))]
+                    ),
+                    Optional('labels'): Or(
+                        dict,
+                        [And(str, Use(self.not_empty))]
+                    ),
+                    Optional('ports'): [Or( # we do not support the long form as mappings
+                        int,
+                        And(str, Use(self.not_empty))
+                    )],
+                    Optional('depends_on'): Or(
+                        dict,
+                        [And(str, Use(self.not_empty))]
+                    ),
                     Optional('deploy'):Or({
                         Optional('resources'): {
                             Optional('limits'): {
@@ -123,7 +146,7 @@ class SchemaChecker():
                     Optional('cpus') : Or(And(str, Use(self.not_empty)), float, int),
                     Optional('container_name'): And(str, Use(self.not_empty)),
                     Optional('shm_size'): Or(And(str, Use(self.not_empty)), float, int),
-                    Optional("healthcheck"): {
+                    Optional('healthcheck'): {
                         Optional('test'): Or(list, And(str, Use(self.not_empty))),
                         Optional('interval'): And(str, Use(self.not_empty)),
                         Optional('timeout'): And(str, Use(self.not_empty)),
@@ -132,42 +155,45 @@ class SchemaChecker():
                         Optional('start_interval'): And(str, Use(self.not_empty)),
                         Optional('disable'): bool,
                     },
-                    Optional("setup-commands"): [{
+                    Optional('setup-commands'): [{
                         'command': And(str, Use(self.not_empty)),
-                        Optional("shell"): And(str, Use(self.not_empty)),
+                        Optional('detach'): bool,
+                        Optional('shell'): And(str, Use(self.not_empty)),
                     }],
-                    Optional("volumes"): self.single_or_list(str),
-                    Optional("folder-destination"):And(str, Use(self.not_empty)),
-                    Optional("entrypoint"): Or(str, [str]),
-                    Optional("command"): Or(And(str, Use(self.not_empty)), [str]),
-                    Optional("log-stdout"): bool,
-                    Optional("log-stderr"): bool,
-                    Optional("read-notes-stdout"): bool,
-                    Optional("read-sci-stdout"): bool,
-                    Optional("docker-run-args"): [And(str, Use(self.not_empty))],
+                    Optional('volumes'): [And(str, Use(self.not_empty))],
+                    Optional('folder-destination'):And(str, Use(self.not_empty)),
+                    Optional('entrypoint'): Or(str, [str]), # can be empty!
+                    Optional('command'): Or(And(str, Use(self.not_empty)), [And(str, Use(self.not_empty))]),
+                    Optional('log-stdout'): bool,
+                    Optional('log-stderr'): bool,
+                    Optional('read-notes-stdout'): bool,
+                    Optional('read-sci-stdout'): bool,
+                    Optional('docker-run-args'): [And(str, Use(self.not_empty))],
 
                 }
             },
 
-             "flow": [{
-                "name": And(str, Use(self.not_empty), Regex(r'^[\.\s0-9a-zA-Z_\(\)-]+$')),
-                "container": And(str, Use(self.not_empty), Use(self.contains_no_invalid_chars)),
-                "commands": [{
-                    "type":"console",
-                    "command": And(str, Use(self.not_empty)),
-                    Optional("detach"): bool,
-                    Optional("note"): And(str, Use(self.not_empty)),
-                    Optional("read-notes-stdout"): bool,
-                    Optional("read-sci-stdout"): bool,
-                    Optional("ignore-errors"): bool,
-                    Optional("shell"): And(str, Use(self.not_empty)),
-                    Optional("log-stdout"): bool,
-                    Optional("log-stderr"): bool,
+             'flow': [{
+                'name': And(str, Use(self.not_empty), Regex(r'^[\.\s0-9a-zA-Z_\(\)-]+$')),
+                'container': And(str, Use(self.not_empty), Use(self.contains_no_invalid_chars)),
+                'commands': [{
+                    'type': Or('console', 'playwright'),
+                    'command': And(str, Use(self.not_empty)),
+                    Optional('detach'): bool,
+                    Optional('note'): And(str, Use(self.not_empty)),
+                    Optional('read-notes-stdout'): bool,
+                    Optional('read-sci-stdout'): bool,
+                    Optional('ignore-errors'): bool,
+                    Optional('shell'): And(str, Use(self.not_empty)),
+                    Optional('log-stdout'): bool,
+                    Optional('stream-stdout'): bool,
+                    Optional('log-stderr'): bool,
+                    Optional('stream-stderr'): bool,
                 }],
 
             }],
 
-            Optional("compose-file"): Use(self.validate_compose_include)
+            Optional('compose-file'): Use(self.validate_compose_include)
         }, ignore_extra_keys=bool(usage_scenario.get('ignore-unsupported-compose', False)))
 
         # First we check the general structure. Otherwise we later cannot even iterate over it
@@ -223,9 +249,11 @@ class SchemaChecker():
             known_flow_names.append(flow['name'])
 
             for command in flow['commands']:
-                if  'read-sci-stdout' in command and 'log-stdout' not in command:
-                    raise SchemaError(f"You have specified `read-sci-stdout` in flow {flow['name']} but not set `log-stdout` to True.")
+                if command.get('read-sci-stdout', False) and (not command.get('log-stdout', True) or command.get('stream-stdout', False)): # log-stdout is by default always on. This is why we set default to True
+                    raise SchemaError(f"You have specified `read-sci-stdout` in flow {flow['name']} but either set `log-stdout` to False or `stream-stdout` to True, which prevents log capturing.")
 
+                if command.get('read-notes-stdout', False) and (not command.get('log-stdout', True) or command.get('stream-stdout', False)): # log-stdout is by default always on. This is why we set default to True
+                    raise SchemaError(f"You have specified `read-notes-stdout` in flow {flow['name']} but either set `log-stdout` to False or `stream-stdout` to True, which prevents log capturing.")
 
 
 # if __name__ == '__main__':

@@ -11,10 +11,10 @@ from fastapi.exceptions import RequestValidationError
 
 import anybadge
 
-from api.object_specifications import Software
+from api.object_specifications import Software, JobChange
 from api.api_helpers import (ORJSONResponseObjKeep, add_phase_stats_statistics,
                          determine_comparison_case,get_comparison_details,
-                         html_escape_multi, get_phase_stats, get_phase_stats_object,
+                         get_phase_stats, get_phase_stats_object, check_run_failed,
                          is_valid_uuid, convert_value, get_timeline_query,
                          get_run_info, get_machine_list, get_artifact, store_artifact,
                          authenticate, check_int_field_api)
@@ -98,6 +98,55 @@ async def get_jobs(
 
     return ORJSONResponse({'success': True, 'data': data})
 
+@router.put('/v1/job')
+async def update_job(
+    job: JobChange,
+    user: User = Depends(authenticate), # pylint: disable=unused-argument
+    ):
+
+    params = [user.is_super_user(), user._id, job.job_id]
+
+    query = '''
+        SELECT state
+        FROM jobs as j
+        WHERE
+            (TRUE = %s OR j.user_id = %s)
+            AND j.type = 'run'
+            AND j.id = %s
+    '''
+
+    job_state = DB().fetch_one(query, params)
+    if job_state is None or job_state == []:
+        raise RequestValidationError('The job you wanted to change does not exist in the database or is not assigned to your user_id.')
+
+    if job_state[0] == 'RUNNING':
+        raise RequestValidationError('The job you are trying to change is already running and cannot be cancelled anymore.')
+
+    if job_state[0] == 'CANCELLED':
+        raise RequestValidationError('The job you are trying to change is already cancelled.')
+
+    if job_state[0] != 'WAITING':
+        raise RequestValidationError('The job you are trying to change is not in the waiting state anymore and thus cannot be cancelled.')
+
+    if job.action != 'cancel':
+        raise RequestValidationError(f"You are trying to make an unsupported action: {job.action}")
+
+    query = '''
+        UPDATE jobs
+        SET state = 'CANCELLED'
+        WHERE
+            (TRUE = %s OR user_id = %s)
+            AND type = 'run'
+            AND id = %s
+    '''
+
+    status_message = DB().query(query, params)
+    if status_message == 'UPDATE 1':
+        return Response(status_code=202) # Accepted - Further processing happening internally. Not technically correct, but processing in frontend easier.
+    else:
+        error_helpers.log_error('Job update did return unexpected result', params=params, status_message=status_message)
+        raise RuntimeError('Could not update job due to database error')
+
 # A route to return all of the available entries in our catalog.
 @router.get('/v1/notes/{run_id}')
 async def get_notes(run_id, user: User = Depends(authenticate)):
@@ -119,8 +168,30 @@ async def get_notes(run_id, user: User = Depends(authenticate)):
     if data is None or data == []:
         return Response(status_code=204) # No-Content
 
-    escaped_data = [html_escape_multi(note) for note in data]
-    return ORJSONResponseObjKeep({'success': True, 'data': escaped_data})
+    return ORJSONResponseObjKeep({'success': True, 'data': data})
+
+
+@router.get('/v1/warnings/{run_id}')
+async def get_warnings(run_id, user: User = Depends(authenticate)):
+    if run_id is None or not is_valid_uuid(run_id):
+        raise RequestValidationError('Run ID is not a valid UUID or empty')
+
+    query = '''
+            SELECT w.run_id, w.message, w.created_at
+            FROM warnings as w
+            JOIN runs as r on w.run_id = r.id
+            WHERE
+                (TRUE = %s OR r.user_id = ANY(%s::int[]))
+                AND w.run_id = %s
+            ORDER BY w.created_at DESC
+            '''
+
+    params = (user.is_super_user(), user.visible_users(), run_id)
+    data = DB().fetch_all(query, params=params)
+    if data is None or data == []:
+        return Response(status_code=204)
+
+    return ORJSONResponseObjKeep({'success': True, 'data': data})
 
 
 @router.get('/v1/network/{run_id}')
@@ -140,8 +211,7 @@ async def get_network(run_id, user: User = Depends(authenticate)):
     params = (user.is_super_user(), user.visible_users(), run_id)
     data = DB().fetch_all(query, params=params)
 
-    escaped_data = html_escape_multi(data)
-    return ORJSONResponseObjKeep({'success': True, 'data': escaped_data})
+    return ORJSONResponseObjKeep({'success': True, 'data': data})
 
 
 @router.get('/v1/repositories')
@@ -189,9 +259,7 @@ async def get_repositories(uri: str | None = None, branch: str | None = None, ma
     if data is None or data == []:
         return Response(status_code=204) # No-Content
 
-    escaped_data = [html_escape_multi(run) for run in data]
-
-    return ORJSONResponse({'success': True, 'data': escaped_data})
+    return ORJSONResponse({'success': True, 'data': data})
 
 
 @router.get('/v1/runs', deprecated=True)
@@ -203,7 +271,9 @@ def old_v1_runs_endpoint():
 async def get_runs(uri: str | None = None, branch: str | None = None, machine_id: int | None = None, machine: str | None = None, filename: str | None = None, job_id: int | None = None, failed: bool | None = None, limit: int | None = 50, uri_mode = 'none', user: User = Depends(authenticate)):
 
     query = '''
-            SELECT r.id, r.name, r.uri, r.branch, r.created_at, r.invalid_run, r.filename, r.usage_scenario_variables, m.description, r.commit_hash, r.end_measurement, r.failed, r.machine_id
+            SELECT r.id, r.name, r.uri, r.branch, r.created_at,
+            (SELECT COUNT(id) FROM warnings as w WHERE w.run_id = r.id) as invalid_run,
+            r.filename, r.usage_scenario_variables, m.description, r.commit_hash, r.end_measurement, r.failed, r.machine_id
             FROM runs as r
             LEFT JOIN machines as m on r.machine_id = m.id
             WHERE
@@ -255,9 +325,7 @@ async def get_runs(uri: str | None = None, branch: str | None = None, machine_id
     if data is None or data == []:
         return Response(status_code=204) # No-Content
 
-    escaped_data = [html_escape_multi(run) for run in data]
-
-    return ORJSONResponse({'success': True, 'data': escaped_data})
+    return ORJSONResponse({'success': True, 'data': data})
 
 
 # Just copy and paste if we want to deprecate URLs
@@ -283,6 +351,12 @@ async def compare_in_repo(ids: str, force_mode:str | None = None, user: User = D
         raise RequestValidationError(str(exc)) from exc
 
     comparison_details = get_comparison_details(user, ids, comparison_db_key)
+
+    # check if a run failed
+
+    if check_run_failed(user, ids) >= 1:
+        raise RequestValidationError('At least one run in your runs to compare failed. Comparsion for failed runs is not supported.')
+
 
     if not (phase_stats := get_phase_stats(user, ids)):
         return Response(status_code=204) # No-Content
@@ -633,8 +707,6 @@ async def get_watchlist(user: User = Depends(authenticate)):
 @router.post('/v1/software/add')
 async def software_add(software: Software, user: User = Depends(authenticate)):
 
-    software = html_escape_multi(software)
-
     if software.name is None or software.name.strip() == '':
         raise RequestValidationError('Name is empty')
 
@@ -691,7 +763,7 @@ async def software_add(software: Software, user: User = Depends(authenticate)):
     if 'variance' in software.schedule_mode:
         amount = 3
     elif software.schedule_mode == 'statistical-significance':
-        amount = 30
+        amount = 10
     else: # even for Watchlist items we do at least one run directly
         amount = 1
 
@@ -717,8 +789,6 @@ async def get_run(run_id: str, user: User = Depends(authenticate)):
 
     if data is None or data == []:
         return Response(status_code=204) # No-Content
-
-    data = html_escape_multi(data)
 
     return ORJSONResponseObjKeep({'success': True, 'data': data})
 

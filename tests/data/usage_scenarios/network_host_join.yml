@@ -9,9 +9,8 @@ services:
     image: gcb_stress
     build:
       context: ../stress-application
-    setup-commands:
-      - command: ps -a
-        shell: sh
+    networks:
+      - host
 
 flow:
   - name: Stress

@@ -46,15 +46,25 @@ VALUES (
                 "measurement.disabled_metric_providers",
                 "measurement.flow_process_duration",
                 "measurement.total_duration",
-                "measurement.phase_padding"
+                "measurement.phase_padding",
+                "measurement.system_check_threshold",
+                "measurement.pre_test_sleep",
+                "measurement.idle_duration",
+                "measurement.baseline_duration",
+                "measurement.post_test_sleep",
+                "measurement.phase_transition_time",
+                "measurement.wait_time_dependencies",
+                "measurement.skip_volume_inspect"
             ]
         },
         "api": {
             "quotas": {},
             "routes": [
+                "/v1/warnings/{run_id}",
                 "/v1/insights",
                 "/v1/ci/insights",
                 "/v1/machines",
+                "/v1/job",
                 "/v2/jobs",
                 "/v1/notes/{run_id}",
                 "/v1/network/{run_id}",
@@ -79,7 +89,10 @@ VALUES (
                 "/v2/ci/measurement/add",
                 "/v1/software/add",
                 "/v1/user/settings",
-                "/v1/user/setting"
+                "/v1/user/setting",
+                "/v1/cluster/changelog",
+                "/v1/cluster/status",
+                "/v1/cluster/status/history"
             ]
         },
         "data": {
@@ -106,8 +119,19 @@ VALUES (
             "quotas": {},
             "dev_no_sleeps": false,
             "dev_no_optimizations": false,
+            "allow_unsafe": false,
+            "skip_unsafe": true,
+            "skip_system_checks": false,
+            "skip_volume_inspect": false,
             "total_duration": 86400,
             "flow_process_duration": 86400,
+            "system_check_threshold": 3,
+            "pre_test_sleep": 5,
+            "baseline_duration": 60,
+            "idle_duration": 60,
+            "post_test_sleep": 5,
+            "phase_transition_time": 1,
+            "wait_time_dependencies": 60,
             "orchestrators": {
                 "docker": {
                     "allowed_run_args": []
@@ -237,7 +261,7 @@ CREATE TABLE runs (
     start_measurement bigint,
     end_measurement bigint,
     phases JSON,
-    logs text,
+    logs jsonb,
     invalid_run text,
     failed boolean DEFAULT false,
     user_id integer NOT NULL REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -259,7 +283,7 @@ CREATE TABLE measurement_metrics (
     sampling_rate_configured int NOT NULL
 );
 
-CREATE UNIQUE INDEX measurement_metrics_get ON measurement_metrics(run_id,metric,detail_name); -- technically we could allow also different units, but we want to see the use case for that first
+CREATE UNIQUE INDEX measurement_metrics_get ON measurement_metrics(run_id,metric,detail_name); -- technically we could allow also different units, but we want to see the use case for that first. Also a lot of code relies on detail_name to be the final discriminator (e.g. metric providers .transform(utils.df_fill_mean) etc.m which then need to be rewritten)
 CREATE INDEX measurement_metrics_build_and_store_phase_stats ON measurement_metrics(run_id,metric,detail_name,unit);
 CREATE INDEX measurement_metrics_build_phases ON measurement_metrics(metric,detail_name,unit);
 
@@ -337,6 +361,19 @@ CREATE TABLE notes (
 CREATE INDEX "notes_run_id" ON "notes" USING HASH ("run_id");
 CREATE TRIGGER notes_moddatetime
     BEFORE UPDATE ON notes
+    FOR EACH ROW
+    EXECUTE PROCEDURE moddatetime (updated_at);
+
+CREATE TABLE warnings (
+    id SERIAL PRIMARY KEY,
+    run_id uuid REFERENCES runs(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    message text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone
+);
+CREATE INDEX "warnings_run_id" ON "warnings" USING HASH ("run_id");
+CREATE TRIGGER warnings_moddatetime
+    BEFORE UPDATE ON warnings
     FOR EACH ROW
     EXECUTE PROCEDURE moddatetime (updated_at);
 
@@ -449,3 +486,30 @@ CREATE TABLE carbon_intensity (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (latitude, longitude, created_at)
 );
+
+CREATE TABLE cluster_changelog (
+    id SERIAL PRIMARY KEY,
+    message text,
+    machine_id integer REFERENCES machines(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone
+);
+
+CREATE TRIGGER cluster_changelog_moddatetime
+    BEFORE UPDATE ON cluster_changelog
+    FOR EACH ROW
+    EXECUTE PROCEDURE moddatetime (updated_at);
+
+
+CREATE TABLE cluster_status_messages (
+    id SERIAL PRIMARY KEY,
+    message text,
+    resolved boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone
+);
+
+CREATE TRIGGER cluster_status_messages_moddatetime
+    BEFORE UPDATE ON cluster_status_messages
+    FOR EACH ROW
+    EXECUTE PROCEDURE moddatetime (updated_at);

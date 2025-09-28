@@ -1,5 +1,7 @@
 const GMT_MACHINES = JSON.parse(localStorage.getItem('gmt_machines')) || {}; // global variable. dynamically resolved via resolveMachinesToGlobalVariable
 
+class APIEmptyResponse204 extends Error {}
+
 // tricky to make this async as some other functions will depend on the value of the variable
 // but if it is not set yet it will populate in a later call
 const resolveMachinesToGlobalVariable = async () => {
@@ -156,9 +158,15 @@ const calculateStatistics = (data, object_access=false) => {
 const replaceRepoIcon = (uri) => {
 
   uri = String(uri)
-  if(!uri.startsWith('http')) return uri; // ignore filesystem paths
+  if(!uri.startsWith('http')) return escapeString(uri); // ignore filesystem paths, but escape them for HTML
 
-  const url = new URL(uri);
+  let url;
+  try {
+    url = new URL(uri);
+  } catch (error) {
+    // If URL parsing fails (malicious or malformed URI), safely escape and return
+    return escapeString(uri);
+  }
 
   let iconClass = "";
   switch (url.host) {
@@ -175,12 +183,21 @@ const replaceRepoIcon = (uri) => {
       iconClass = "gitlab";
       break;
     default:
-      return uri;
+      return escapeString(uri);
   }
-  return `<i class="icon ${iconClass}"></i>` + uri.substring(url.origin.length);
+  return `<i class="icon ${iconClass}"></i>` + escapeString(uri.substring(url.origin.length));
 };
 
-const showNotification = (message_title, message_text, type='warning') => {
+const createExternalIconLink = (url) => {
+    // Creates a safe external icon link with protocol validation to prevent XSS attacks
+    // Only allows http/https protocols, returns empty string for non-HTTP URLs
+    if (url && url.startsWith('http')) {
+        return `<a href="${url}" target="_blank"><i class="icon external alternate"></i></a>`;
+    }
+    return '';
+}
+
+const showNotification = (message_title, message_text, type='error') => {
     if (typeof message_text === 'object') console.log(message_text); // this is most likey an error. We need it in the console
 
     const message = (typeof message_text === 'string' || typeof message_text === 'object') ? message_text : JSON.stringify(message_text);
@@ -192,21 +209,24 @@ const showNotification = (message_title, message_text, type='warning') => {
         displayTime: 5000,
         title: message_title,
         message: message,
-        className: {
-            toast: 'ui message'
-        }
     });
     return;
 }
 
-const copyToClipboard = (e) => {
+const copyToClipboard = async (e) => {
   e.preventDefault();
-  if (navigator && navigator.clipboard && navigator.clipboard.writeText)
-    navigator.clipboard.writeText(e.currentTarget.previousElementSibling.innerHTML)
-    return false
-
-  alert('Copying to clipboard on local is not working due to browser security models')
-  return Promise.reject('The Clipboard API is not available.');
+  
+  if (!navigator?.clipboard?.writeText) {
+    alert('Clipboard API not supported');
+    return;
+  }
+  
+  try {
+    const htmlContent = e.currentTarget.previousElementSibling.innerHTML;
+    await navigator.clipboard.writeText(htmlContent);
+  } catch (err) {
+    alert('Failed to copy HTML content to clipboard!');
+  }
 };
 
 const dateToYMD = (date, short=false, no_break=false) => {
@@ -268,7 +288,7 @@ async function makeAPICall(path, values=null, force_authentication_token=null, f
     .then(response => {
         if (response.status == 204) {
             // 204 responses use no body, so json() call would fail
-            return {success: false, err: "No data to display. API returned empty response (HTTP 204)"}
+            throw new APIEmptyResponse204('No data to display. API returned empty response (HTTP 204)')
         }
         if (response.status == 202) {
             return
@@ -289,7 +309,7 @@ async function makeAPICall(path, values=null, force_authentication_token=null, f
 };
 
 /* Menu toggling */
-let openMenu = function(e){
+let openMenu = function(){
     $(this).removeClass('closed').addClass('opened');
     $('#menu').removeClass('closed').addClass('opened');
     $('#main').removeClass('closed').addClass('opened');
@@ -298,7 +318,7 @@ let openMenu = function(e){
 
 }
 
-let closeMenu = function(e){
+let closeMenu = function(){
     $(this).removeClass('opened').addClass('closed');
     $('#menu').removeClass('opened').addClass('closed');
     $('#main').removeClass('opened').addClass('closed');

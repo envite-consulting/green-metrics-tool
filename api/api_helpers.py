@@ -4,7 +4,6 @@ faulthandler.enable(file=sys.__stderr__)  # will catch segfaults and write to st
 
 from collections import OrderedDict
 from functools import cache
-from html import escape as html_escape
 import typing
 import uuid
 
@@ -15,7 +14,6 @@ from fastapi.security import APIKeyHeader
 from fastapi.exceptions import RequestValidationError
 import numpy as np
 import scipy.stats
-from pydantic import BaseModel
 
 from psycopg import sql
 
@@ -106,46 +104,6 @@ def is_valid_uuid(val):
     except ValueError:
         return False
 
-def html_escape_multi(item):
-    """Replace special characters "'", "\"", "&", "<" and ">" to HTML-safe sequences."""
-    if item is None:
-        return None
-
-    if isinstance(item, str):
-        return html_escape(item)
-
-    if isinstance(item, list):
-        return [html_escape_multi(element) for element in item]
-
-    if isinstance(item, dict):
-        for key, value in item.items():
-            if isinstance(value, str):
-                item[key] = html_escape(value)
-            elif isinstance(value, dict):
-                item[key] = html_escape_multi(value)
-            elif isinstance(value, list):
-                item[key] = [
-                    html_escape_multi(item)
-                    if isinstance(item, dict)
-                    else html_escape(item)
-                    if isinstance(item, str)
-                    else item
-                    for item in value
-                ]
-        return item
-
-    if isinstance(item, BaseModel):
-        item_copy = item.model_copy(deep=True)
-        # we ignore keys that begin with model_ because pydantic v2 renamed a lot of their fields from __fields to model_fields:
-        # https://docs.pydantic.dev/dev-v2/migration/#changes-to-pydanticbasemodel
-        # This could cause an error if we ever make a BaseModel that has keys that begin with model_
-        keys = [key for key in dir(item_copy) if not key.startswith('_') and not key.startswith('model_') and not callable(getattr(item_copy, key))]
-        for key in keys:
-            setattr(item_copy, key, html_escape_multi(getattr(item_copy, key)))
-        return item_copy
-
-    return item
-
 def get_machine_list():
     query = """
         WITH timings as (
@@ -180,7 +138,9 @@ def get_run_info(user, run_id):
                     LEFT JOIN categories as t on t.id = elements) as categories,
                 filename, start_measurement, end_measurement,
                 measurement_config, machine_specs, machine_id, usage_scenario, usage_scenario_variables,
-                created_at, invalid_run, phases, logs, failed, gmt_hash, runner_arguments
+                created_at,
+                (SELECT COUNT(id) FROM warnings as w WHERE w.run_id = runs.id) as invalid_run,
+                phases, logs, failed, gmt_hash, runner_arguments
             FROM runs
             WHERE
                 (TRUE = %s OR user_id = ANY(%s::int[]))
@@ -445,6 +405,19 @@ def determine_comparison_case(user, ids, force_mode=None):
         return ('Repeated Run', 'commit_hash')  # Case A - Everything is identical and just repeating runs
 
     raise RuntimeError('Could not determine comparison case after checking all conditions')
+
+def check_run_failed(user, ids):
+    query = """
+            SELECT
+               COUNT(failed)
+            FROM runs
+            WHERE
+                (TRUE = %s OR user_id = ANY(%s::int[]))
+                AND id = ANY(%s::uuid[])
+                AND failed IS TRUE
+            """
+    params = (user.is_super_user(), user.visible_users(), ids)
+    return DB().fetch_one(query, params=params)[0]
 
 def get_phase_stats(user, ids):
     query = """

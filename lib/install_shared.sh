@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -36,6 +36,7 @@ cert_file=''
 enterprise=false
 ask_ping=true
 force_send_ping=false
+install_nvidia_toolkit_headers=false
 ee_branch=''
 
 function print_message {
@@ -102,6 +103,22 @@ function check_file_permissions() {
     return 0
 }
 
+function copy_backup() {
+    local file=$1
+    local example_file="${file}.example"
+
+    if [[ ! -f "$example_file" ]]; then
+        echo "Error: Example file ${example_file} does not exist"
+        return 1
+    fi
+
+    if [[ -f "$file" ]]; then
+        print_message "Backing up existing ${file} to ${file}.backup"
+        cp "$file" "${file}.backup"
+    fi
+
+    cp "$example_file" "$file"
+}
 
 function prepare_config() {
 
@@ -120,7 +137,7 @@ function prepare_config() {
     eval "${sed_command} -e \"s|PLEASE_CHANGE_THIS|$db_pw|\" docker/compose.yml"
 
     print_message "Updating config.yml with new password ..."
-    cp config.yml.example config.yml
+    copy_backup config.yml
     eval "${sed_command} -e \"s|PLEASE_CHANGE_THIS|$db_pw|\" config.yml"
 
     print_message "Updating project with provided URLs ..."
@@ -128,19 +145,21 @@ function prepare_config() {
     eval "${sed_command} -e \"s|__API_URL__|$api_url|\" config.yml"
     eval "${sed_command} -e \"s|__METRICS_URL__|$metrics_url|\" config.yml"
 
-    cp docker/nginx/api.conf.example docker/nginx/api.conf
+
+    copy_backup docker/nginx/api.conf
     local host_api_url=`echo $api_url | sed -E 's/^\s*.*:\/\///g'`
     local host_api_url=${host_api_url%:*}
     eval "${sed_command} -e \"s|__API_URL__|$host_api_url|\" docker/nginx/api.conf"
 
-    cp docker/nginx/block.conf.example docker/nginx/block.conf
 
-    cp docker/nginx/frontend.conf.example docker/nginx/frontend.conf
+    copy_backup docker/nginx/block.conf
+
+    copy_backup docker/nginx/frontend.conf
     local host_metrics_url=`echo $metrics_url | sed -E 's/^\s*.*:\/\///g'`
     local host_metrics_url=${host_metrics_url%:*}
     eval "${sed_command} -e \"s|__METRICS_URL__|$host_metrics_url|\" docker/nginx/frontend.conf"
 
-    cp frontend/js/helpers/config.js.example frontend/js/helpers/config.js
+    copy_backup frontend/js/helpers/config.js
     eval "${sed_command} -e \"s|__API_URL__|$api_url|\" frontend/js/helpers/config.js"
     eval "${sed_command} -e \"s|__METRICS_URL__|$metrics_url|\" frontend/js/helpers/config.js"
 
@@ -329,6 +348,9 @@ function build_binaries() {
             if [[ "$make_path" == *"/lmsensors/"* ]] && [[ "${install_sensors}" == false ]]; then
                 continue
             fi
+            if [[ "$make_path" == *"/nvidia/"* ]] && [[ "${install_nvidia_toolkit_headers}" == false ]]; then
+                continue
+            fi
             echo "Installing $subdir/metric-provider-binary ..."
             rm -f $subdir/metric-provider-binary 2> /dev/null
             make -C $subdir
@@ -340,17 +362,9 @@ function build_containers() {
 
     if [[ $build_docker_containers == true ]] ; then
         print_message "Building / Updating docker containers"
-        if docker info 2>/dev/null | grep rootless || [[ $(uname) == "Darwin" ]]; then
-            print_message "Docker is running in rootless/VM mode. Using non-sudo call ..."
-            docker compose -f docker/compose.yml down
-            docker compose -f docker/compose.yml build
-            docker compose -f docker/compose.yml pull
-        else
-            print_message "Docker is running in default root mode. Using sudo call ..."
-            sudo docker compose -f docker/compose.yml down
-            sudo docker compose -f docker/compose.yml build
-            sudo docker compose -f docker/compose.yml pull
-        fi
+        docker compose -f docker/compose.yml down
+        docker compose -f docker/compose.yml build
+        docker compose -f docker/compose.yml pull
     fi
 }
 
@@ -407,18 +421,20 @@ check_python_version
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --nvidia-gpu)
+            install_nvidia_toolkit_headers=true
+            shift
+            ;;
         --ai) # This is not documented in the help, as it is only for GCS internal use
             ask_ai_optimisations=false
             activate_ai_optimisations=true
             shift
             ;;
-
         --no-ai) # This is not documented in the help, as it is only for GCS internal use
             ask_ai_optimisations=false
             activate_ai_optimisations=false
             shift
             ;;
-
         --ee-branch) # This is not documented in the help, as it is only for GCS internal use
             check_optarg 'ee-branch' "${2:-}"
             ee_branch="$2"
