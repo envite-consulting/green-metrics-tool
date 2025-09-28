@@ -1,6 +1,6 @@
 # iSAQB GREEN - Green Metrics Tool
 
-Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe des Green Metric Tools (GMT).
+Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe vom Green Metrics Tool (GMT).
 
 Bei einem GitHub Codespace handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
 
@@ -14,9 +14,9 @@ Führen Sie bitte zunächst folgenden Befehl im Terminal aus:
 bash .devcontainer/codespace-setup.sh
 ```
 
-Die Ausführung des Skripts benötigt etwa 5 Minuten. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die aufgrund von GitHub Codespaces nötig sind.
+Die Ausführung des Skripts benötigt etwa 5 Minuten. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die zur Ausführung innerhalb von GitHub Codespaces nötig sind.
 
-Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python):
+Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python, was für die Ausführung von GMT benötigt wird):
 
 ```sh
 source venv/bin/activate
@@ -27,10 +27,12 @@ source venv/bin/activate
 Für eine erste kurze Energiemessung kann folgender Befehl genutzt werden:
 
 ```sh
-python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --dev-no-optimizations
+python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 `runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Repository `/workspaces/green-metrics-tool/example-applications` genutzt. Das Nutzungsszenario führt das Linux `stress`-Kommando für 5 Sekunden aus, was einen CPU-Kern stark auslastet.
+
+Wir verwenden hier die Flags `--measurement-baseline-duration=5` und `--measurement-idle-duration=5`, um die Wartezeit vor der Baseline- und Idle-Messung zu verkürzen. Der Default-Wert beträgt jeweils 60 s. Bei realen Energiemessungen ist es wichtig, solche Pausen einzubauen, um der Maschine Zeit zu geben, sich abzukühlen.
 
 Sobald die Messung beendet ist, wird im Terminal ein Link angezeigt. Dieser kann mit Strg+Klick geöffnet werden. Die Seite mit den Messergebnissen öffnet sich in einem neuen Tab.
 Alternativ lässt sich das Frontend vom Green Metrics Tool wie folgt aufrufen:
@@ -61,7 +63,7 @@ Spielerinformationen beinhalten Informationen zum Club. Um diese Informationen z
 Hier möchten wir den Energieverbrauch der vier bereitgestellten Endpunkte vergleichen:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Microservices (APIs)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-all-endpoints.yml" --skip-system-checks --dev-no-optimizations --skip-unsafe
+python3 runner.py --name "Spring REST Football - Microservices (APIs)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-all-endpoints.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 *Hinweis: Die Energiemessung wird hier mit "kalten" JVMs durchgeführt, d.h. die Applikationen in der Laufzeitumgebung wurden noch nicht just-in-time optimiert.*
@@ -86,13 +88,13 @@ source venv/bin/activate
 Energiemessung Modulith:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Modulith (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load.yml" --skip-system-checks --dev-no-optimizations --skip-unsafe
+python3 runner.py --name "Spring REST Football - Modulith (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 Energiemessung Microservices:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --dev-no-optimizations --skip-unsafe
+python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 Die Ergebnisse lassen sich wieder im GMT-Frontend betrachten.
