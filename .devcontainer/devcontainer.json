@@ -17,6 +17,7 @@
         },
         "vscode": {
             "settings": {
+                "chat.disableAIFeatures": true, // disable Copilot
                 "workbench.editorAssociations": {
                     "*.md": "vscode.markdown.preview.editor" // Open markdown files in preview mode by default
                 }
