@@ -35,6 +35,9 @@ python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-t
 Wir verwenden hier die Flags `--measurement-baseline-duration=5` und `--measurement-idle-duration=5`, um die Wartezeit vor der Baseline- und Idle-Messung zu verkürzen. Der Default-Wert beträgt jeweils 60 s. Bei realen Energiemessungen ist es wichtig, solche Pausen einzubauen, um der Maschine Zeit zu geben, sich abzukühlen.
 
 Sobald die Messung beendet ist, wird im Terminal ein Link angezeigt. Dieser kann mit Strg+Klick geöffnet werden. Die Seite mit den Messergebnissen öffnet sich in einem neuen Tab.
+
+Die Meldung "You are about to access a development port served by someone's codespace" per Klick auf "Continue" akzeptieren.
+
 Alternativ lässt sich das Frontend vom Green Metrics Tool wie folgt aufrufen:
 
 - Tab "Ports" öffnen
