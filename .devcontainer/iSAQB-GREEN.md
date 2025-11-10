@@ -1,6 +1,6 @@
 # iSAQB GREEN - Green Metrics Tool
 
-Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe om Green Metrics Tool (GMT).
+Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe vom Green Metrics Tool (GMT).
 
 Bei einem GitHub Codespace handelt es sich um eine virtuelle Serverinstanz, so dass die Ergebnisse zwischen Messdurchläufen sich unterscheiden können. Für repräsentative Energiemessungen ist eine Umgebung wie diese hier somit ungeeignet.
 
@@ -16,7 +16,7 @@ bash .devcontainer/codespace-setup.sh
 
 Die Ausführung des Skripts benötigt etwa 5 Minuten. Es werden das Green Metrics Tool inkl. aller Abhängigkeiten installiert sowie weitere Konfigurationsanpassungen vorgenommen, die zur Ausführung innerhalb von GitHub Codespaces nötig sind.
 
-Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python):
+Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python, was für die Ausführung von GMT benötigt wird):
 
 ```sh
 source venv/bin/activate
@@ -32,7 +32,7 @@ python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-t
 
 `runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Repository `/workspaces/green-metrics-tool/example-applications` genutzt. Das Nutzungsszenario führt das Linux `stress`-Kommando für 5 Sekunden aus, was einen CPU-Kern stark auslastet.
 
-Wir verwenden hier die Flags `--measurement-baseline-duration=5` und `--measurement-idle-duration=5`, um die Wartezeit vor der Baseline- und Idle-Messung zu verkürzen. Der Default beträgt jeweils 60 s. Bei realen Energiemessungen ist es wichtig, solche Pausen einzubauen, um der Maschine Zeit zu geben, sich abzukühlen.
+Wir verwenden hier die Flags `--measurement-baseline-duration=5` und `--measurement-idle-duration=5`, um die Wartezeit vor der Baseline- und Idle-Messung zu verkürzen. Der Default-Wert beträgt jeweils 60 s. Bei realen Energiemessungen ist es wichtig, solche Pausen einzubauen, um der Maschine Zeit zu geben, sich abzukühlen.
 
 Sobald die Messung beendet ist, wird im Terminal ein Link angezeigt. Dieser kann mit Strg+Klick geöffnet werden. Die Seite mit den Messergebnissen öffnet sich in einem neuen Tab.
 Alternativ lässt sich das Frontend vom Green Metrics Tool wie folgt aufrufen:
