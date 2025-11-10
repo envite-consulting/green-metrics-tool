@@ -70,20 +70,25 @@ const fillInputsFromURL = (url_params) => {
         showNotification('Invalid URI', 'URI must be a valid HTTP/HTTPS URL or absolute file path');
         throw "Error";
     }
-    $('input[name="uri"]').val(escapeString(repository_uri));
-    $('#uri').text(escapeString(repository_uri));
+    // setting as value / innerText needs no XSS escaping
+    $('input[name="uri"]').val(repository_uri);
+    $('#uri').text(repository_uri);
 
     // all variables can be set via URL initially
     if(url_params['branch'] != null) {
-        $('input[name="branch"]').val(escapeString(url_params['branch']));
-        $('#branch').text(escapeString(url_params['branch']));
+        $('input[name="branch"]').val(url_params['branch']);
+        $('#branch').text(url_params['branch']);
     }
     if(url_params['filename'] != null) {
-        $('input[name="filename"]').val(escapeString(url_params['filename']));
-        $('#filename').text(escapeString(url_params['filename']));
+        $('input[name="filename"]').val(url_params['filename']);
+        $('#filename').text(url_params['filename']);
+    }
+    if(url_params['usage_scenario_variables'] != null) {
+        $('input[name="usage_scenario_variables"]').val((url_params['usage_scenario_variables']));
+        $('#usage-scenario-variables').text(url_params['usage_scenario_variables']);
     }
     if(url_params['machine_id'] != null) {
-        $('select[name="machine_id"]').val(escapeString(url_params['machine_id']));
+        $('select[name="machine_id"]').val(url_params['machine_id']);
         $('#machine').text($('select[name="machine_id"] :checked').text());
     }
     if(url_params['sorting'] != null) $(`#sorting-${url_params['sorting']}`).prop('checked', true);
@@ -92,31 +97,34 @@ const fillInputsFromURL = (url_params) => {
 
 }
 
-const buildQueryParams = (skip_dates=false,metric_override=null,detail_name=null) => {
+const buildQueryParams = (skip_dates=false,metric_override=null,detail_name=null,html_replace=false) => {
     let api_url = `uri=${encodeURIComponent(repository_uri)}`;
 
+    const ampersand = html_replace ? '&amp' : '&';
+
     // however, the form takes precendence
-    if($('input[name="branch"]').val() !== '') api_url = `${api_url}&branch=${encodeURIComponent($('input[name="branch"]').val())}`
-    if($('input[name="sorting"]:checked').val() !== '') api_url = `${api_url}&sorting=${encodeURIComponent($('input[name="sorting"]:checked').val())}`
-    if($('input[name="phase"]:checked').val() !== '') api_url = `${api_url}&phase=${encodeURIComponent($('input[name="phase"]:checked').val())}`
-    if($('select[name="machine_id"]').val() !== '') api_url = `${api_url}&machine_id=${encodeURIComponent($('select[name="machine_id"]').val())}`
-    if($('input[name="filename"]').val() !== '') api_url = `${api_url}&filename=${encodeURIComponent($('input[name="filename"]').val())}`
+    if($('input[name="branch"]').val() !== '') api_url += `${ampersand}branch=${encodeURIComponent($('input[name="branch"]').val())}`
+    if($('input[name="sorting"]:checked').val() !== '') api_url += `${ampersand}sorting=${encodeURIComponent($('input[name="sorting"]:checked').val())}`
+    if($('input[name="phase"]:checked').val() !== '') api_url += `${ampersand}phase=${encodeURIComponent($('input[name="phase"]:checked').val())}`
+    if($('select[name="machine_id"]').val() !== '') api_url += `${ampersand}machine_id=${encodeURIComponent($('select[name="machine_id"]').val())}`
+    if($('input[name="filename"]').val() !== '') api_url += `${ampersand}filename=${encodeURIComponent($('input[name="filename"]').val())}`
+    if($('input[name="usage_scenario_variables"]').val() !== '') api_url += `${ampersand}usage_scenario_variables=${encodeURIComponent($('input[name="usage_scenario_variables"]').val())}`
 
-    if(metric_override != null) api_url = `${api_url}&metric=${encodeURIComponent(metric_override)}`
-    else if($('input[name="metrics"]:checked').val() !== '') api_url = `${api_url}&metric=${encodeURIComponent($('input[name="metrics"]:checked').val())}`
+    if(metric_override != null) api_url += `${ampersand}metric=${encodeURIComponent(metric_override)}`
+    else if($('input[name="metrics"]:checked').val() !== '') api_url += `${ampersand}metric=${encodeURIComponent($('input[name="metrics"]:checked').val())}`
 
-    if(detail_name != null) api_url = `${api_url}&detail_name=${encodeURIComponent(detail_name)}`
+    if(detail_name != null) api_url += `${ampersand}detail_name=${encodeURIComponent(detail_name)}`
 
     if (skip_dates) return api_url;
 
     if ($('input[name="start_date"]').val() != '') {
         let start_date = dateToYMD(new Date($('input[name="start_date"]').val()), short=true);
-        api_url = `${api_url}&start_date=${encodeURIComponent(start_date)}`
+        api_url += `${ampersand}start_date=${encodeURIComponent(start_date)}`
     }
 
     if ($('input[name="end_date"]').val() != '') {
         let end_date = dateToYMD(new Date($('input[name="end_date"]').val()), short=true);
-        api_url = `${api_url}&end_date=${encodeURIComponent(end_date)}`
+        api_url += `${ampersand}end_date=${encodeURIComponent(end_date)}`
     }
     return api_url;
 }
@@ -130,8 +138,6 @@ const loadCharts = async () => {
     let phase_stats_data = null;
     try {
         phase_stats_data = (await makeAPICall(`/v1/timeline?${buildQueryParams()}`)).data
-        console.log(phase_stats_data);
-
         document.querySelectorAll('.container-no-data').forEach(el => el.style.display = '')
         document.querySelector('#message-no-data').style.display = 'none';
 
@@ -190,7 +196,7 @@ const loadCharts = async () => {
                             <i class="question circle icon link"></i>
                         </i>
                     </div>
-                    <span class="energy-badge-container"><a href="${METRICS_URL}/timeline.html?${buildQueryParams()}" target="_blank"><img src="${API_URL}/v1/badge/timeline?${buildQueryParams(skip_dates=false,metric_override=series[my_series].metric_name,detail_name=series[my_series].detail_name)}&unit=joules"></a></span>
+                    <span class="energy-badge-container"><a href="${METRICS_URL}/timeline.html?${buildQueryParams(false, null, null, true)}" target="_blank"><img src="${API_URL}/v1/badge/timeline?${buildQueryParams(false,series[my_series].metric_name,series[my_series].detail_name, true)}&unit=joules"></a></span>
                     <a class="copy-badge"><i class="copy icon"></i></a>
                 </div>
                 <p></p>`
@@ -222,6 +228,7 @@ const loadCharts = async () => {
             triggerOn: 'click',
             formatter: function (params, ticket, callback) {
                 if(series[params.seriesName]?.notes == null) return; // no notes for the MovingAverage
+                const repository_uri_encoded = repository_uri.split('/').map(encodeURIComponent).join('/');
                 return `<strong>${escapeString(series[params.seriesName].notes[params.dataIndex].run_name)}</strong><br>
                         run_id: <a href="/stats.html?id=${series[params.seriesName].notes[params.dataIndex].run_id}"  target="_blank">${series[params.seriesName].notes[params.dataIndex].run_id}</a><br>
                         date: ${series[params.seriesName].notes[params.dataIndex].created_at}<br>
@@ -229,7 +236,7 @@ const loadCharts = async () => {
                         phase: ${escapeString(series[params.seriesName].notes[params.dataIndex].phase)}<br>
                         value: ${numberFormatter.format(series[params.seriesName].values[params.dataIndex].value)}<br>
                         commit_timestamp: ${series[params.seriesName].notes[params.dataIndex].commit_timestamp}<br>
-                        commit_hash: <a href="${encodeURIComponent(repository_uri)}/commit/${series[params.seriesName].notes[params.dataIndex].commit_hash}" target="_blank">${escapeString(series[params.seriesName].notes[params.dataIndex].commit_hash)}</a><br>
+                        commit_hash: <a href="${repository_uri_encoded}/commit/${series[params.seriesName].notes[params.dataIndex].commit_hash}" target="_blank">${escapeString(series[params.seriesName].notes[params.dataIndex].commit_hash)}</a><br>
                         gmt_hash: <a href="https://github.com/green-coding-solutions/green-metrics-tool/commit/${series[params.seriesName].notes[params.dataIndex].gmt_hash}" target="_blank">${escapeString(series[params.seriesName].notes[params.dataIndex].gmt_hash)}</a><br>
 
                         <br>

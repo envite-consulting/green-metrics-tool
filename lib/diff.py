@@ -13,7 +13,6 @@ def get_diffable_rows(user, uuids):
     query = """SELECT
         uri,
         branch,
-        invalid_run,
         commit_hash,
         phases,
         machine_id,
@@ -22,6 +21,7 @@ def get_diffable_rows(user, uuids):
         commit_timestamp,
         usage_scenario,
         usage_scenario_variables,
+        usage_scenario_dependencies,
         measurement_config,
         runner_arguments,
         machine_specs -- most complex. Should come last

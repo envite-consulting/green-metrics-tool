@@ -82,43 +82,69 @@ const removeFilter = (paramName) => {
     window.location.href = newUrl;
 }
 
-const showActiveFilters = (key, value) => {
-    document.querySelector(`.ui.warning.message`).classList.remove('hidden');
-    const newListItem = document.createElement("span");
-    newListItem.innerHTML = `<div class="ui label"><i class="times circle icon" onClick="removeFilter('${escapeString(key)}')"></i>${escapeString(key)}: ${escapeString(value)} </div> `;
-    document.querySelector(`.ui.warning.message ul`).appendChild(newListItem);
-
-}
 
 const getFilterQueryStringFromURI = () => {
     const url_params = getURLParams();
+
     let query_string = '';
     if (url_params['uri'] != null && url_params['uri'].trim() != '') {
         const uri = url_params['uri'].trim()
-        query_string = `${query_string}&uri=${uri}`
-        showActiveFilters('uri', uri)
+        query_string += `&uri=${uri}`
+        document.querySelector('input[name=uri]').value = uri;
+        document.querySelector('#filters-active').classList.remove('hidden');
     }
     if (url_params['filename'] != null && url_params['filename'].trim() != '') {
         const filename = url_params['filename'].trim()
-        query_string = `${query_string}&filename=${filename}`
-        showActiveFilters('filename', filename)
+        query_string += `&filename=${filename}`
+        document.querySelector('input[name=filename]').value = filename;
+        document.querySelector('#filters-active').classList.remove('hidden');
     }
     if (url_params['branch'] != null && url_params['branch'].trim() != '') {
         const branch = url_params['branch'].trim()
-        query_string = `${query_string}&branch=${branch}`
-        showActiveFilters('branch', branch)
+        query_string += `&branch=${branch}`
+        document.querySelector('input[name=branch]').value = branch;
+        document.querySelector('#filters-active').classList.remove('hidden');
     }
     if (url_params['machine_id'] != null && url_params['machine_id'].trim() != '') {
         const machine_id = url_params['machine_id'].trim()
-        query_string = `${query_string}&machine_id=${machine_id}`
-        showActiveFilters('machine_id', machine_id)
+        query_string += `&machine_id=${machine_id}`
+        document.querySelector('input[name=machine_id]').value = machine_id;
+        document.querySelector('#filters-active').classList.remove('hidden');
     }
     if (url_params['machine'] != null && url_params['machine'].trim() != '') {
         const machine = url_params['machine'].trim()
-        query_string = `${query_string}&machine=${machine}`
-        showActiveFilters('machine', machine)
+        query_string += `&machine=${machine}`
+        document.querySelector('input[name=machine]').value = machine;
+        document.querySelector('#filters-active').classList.remove('hidden');
+    }
+    if (url_params['usage_scenario_variables'] != null && url_params['usage_scenario_variables'].trim() != '') {
+        const usage_scenario_variables = url_params['usage_scenario_variables'].trim()
+        query_string += `&usage_scenario_variables=${usage_scenario_variables}`
+        document.querySelector('input[name=usage_scenario_variables]').value = usage_scenario_variables;
+        document.querySelector('#filters-active').classList.remove('hidden');
     }
 
+    return query_string
+}
+
+const getFilterQueryStringFromInputs = () => {
+    let query_string = '';
+
+    const uri = document.querySelector('input[name=uri]').value.trim()
+    const filename = document.querySelector('input[name=filename]').value.trim()
+    const branch = document.querySelector('input[name=branch]').value.trim()
+    const machine = document.querySelector('input[name=machine]').value.trim()
+    const machine_id = document.querySelector('input[name=machine_id]').value.trim()
+    const usage_scenario_variables = document.querySelector('input[name=usage_scenario_variables]').value.trim()
+
+    if(uri != '') query_string += `&uri=${document.querySelector('input[name=uri]').value.trim()}`
+    if(filename != '')query_string += `&filename=${document.querySelector('input[name=filename]').value.trim()}`
+    if(branch != '')query_string += `&branch=${document.querySelector('input[name=branch]').value.trim()}`
+    if(machine != '')query_string += `&machine=${document.querySelector('input[name=machine]').value.trim()}`
+    if(machine_id != '')query_string += `&machine_id=${document.querySelector('input[name=machine_id]').value.trim()}`
+    if(usage_scenario_variables != '')query_string += `&usage_scenario_variables=${document.querySelector('input[name=usage_scenario_variables]').value.trim()}`
+
+    document.querySelector('#filters-active').classList.remove('hidden');
 
     return query_string
 }
@@ -145,7 +171,7 @@ async function getRepositories(sort_by = 'date') {
         let row = table_body.insertRow()
         row.innerHTML = `
             <td>
-                <div class="ui accordion" style="width: 100%;">
+                <div class="ui accordion repositories" style="width: 100%;">
                   <div class="title">
                     <i class="dropdown icon"></i> ${uri_link}
                     <span class="ui label float-right"><i class="clock icon"></i> ${dateToYMD(new Date(last_run), short=true)}</span>
@@ -156,7 +182,7 @@ async function getRepositories(sort_by = 'date') {
                 </div>
             </td>`;
     });
-    $('.ui.accordion').accordion({
+    $('.ui.accordion.repositories').accordion({
         onOpen: function(value, text) {
             const table = this.querySelector('table');
 
@@ -165,11 +191,13 @@ async function getRepositories(sort_by = 'date') {
                 getRunsTable($(table), `/v2/runs?uri=${uri}&uri_mode=exact&limit=0`, false, false, true)
             }
     }});
+    $('.ui.accordion.filter-dropdown').hide();
 }
 
 const getRunsTable = async (el, url, include_uri=true, include_button=true, searching=false) => {
 
     let runs = null;
+    el.DataTable().clear().destroy() // clear old
 
     try {
         runs = await makeAPICall(url)
@@ -231,7 +259,18 @@ const getRunsTable = async (el, url, include_uri=true, include_button=true, sear
         }
     });
     columns.push({ data: 8, title: '<i class="icon laptop code"></i>Machine</th>', render: (el, type, row) => escapeString(el) });
-    columns.push({ data: 4, title: '<i class="icon calendar"></i>Last run</th>', render: (el, type, row) => el == null ? '-' : `${dateToYMD(new Date(el))}<br><a href="/timeline.html?uri=${encodeURIComponent(row[2])}&branch=${encodeURIComponent(row[3])}&machine_id=${row[12]}&filename=${encodeURIComponent(row[6])}&metrics=key" class="ui teal horizontal label  no-wrap"><i class="ui icon clock"></i>History &nbsp;</a>` });
+    columns.push({
+        data: 4,
+        title: '<i class="icon calendar"></i>Last run</th>',
+        render: function(el, type, row) {
+            if (el == null) return '-';
+            let usage_scenario_variables = Object.entries(row[7]).map(([k, v]) => typeof(v) == 'number' ? `"${k}": ${v}` : `"${k}": ${JSON.stringify(v)}`).join(', ')
+            usage_scenario_variables = `{${usage_scenario_variables}}`
+
+            return `${dateToYMD(new Date(el))}<br><a href="/timeline.html?uri=${encodeURIComponent(row[2])}&amp;branch=${encodeURIComponent(row[3])}&amp;machine_id=${row[12]}&amp;filename=${encodeURIComponent(row[6])}&amp;usage_scenario_variables=${encodeURIComponent(usage_scenario_variables)}&amp;metrics=key" class="ui teal horizontal label  no-wrap"><i class="ui icon clock"></i>History &nbsp;</a>`;
+
+        }
+    });
 
     columns.push({
         data: 0,
@@ -278,10 +317,12 @@ const getRunsTable = async (el, url, include_uri=true, include_button=true, sear
         if (el.currentTarget.innerText === 'Switch to repository view') {
             document.querySelector('h1.ui.header span').innerText = 'ScenarioRunner - Repositories';
             localStorage.setItem('scenario_runner_data_shown', 'repositories');
+            history.replaceState(null, '', window.location.pathname); // clear any filters if any set
             window.location.reload();
         } else {
             document.querySelector('h1.ui.header span').innerText = 'ScenarioRunner - Last 50 Runs';
             localStorage.setItem('scenario_runner_data_shown', 'last_runs');
+            history.replaceState(null, '', window.location.pathname); // clear any filters if any set
             window.location.reload();
         }
     });
@@ -305,5 +346,26 @@ const getRunsTable = async (el, url, include_uri=true, include_button=true, sear
             el.value = value;
         }
     }
+
+    // filters
+    $('.ui.accordion.filter-dropdown').accordion();
+    $('form').on('submit', async function (e) {
+        e.preventDefault();
+        const query_string = getFilterQueryStringFromInputs()
+        getRunsTable($('#runs-and-repos-table tbody table'), `/v2/runs?${query_string}&limit=0`)
+        history.pushState(null, '', `${window.location.origin}${window.location.pathname}?${query_string}`); // replace URL to bookmark!
+        $('.ui.accordion.filter-dropdown').accordion('close', 0);
+        return false;
+    });
+    $('button[name=clear]').on('click', async function () {
+        history.replaceState(null, '', window.location.pathname);
+        document.querySelectorAll('input.filter-option').forEach((el) => {
+            el.value = '';
+        })
+        getRunsTable($('#runs-and-repos-table tbody table'), `/v2/runs?limit=50`)
+        $('.ui.accordion').accordion('close', 0);
+        document.querySelector('#filters-active').classList.add('hidden');
+    });
+
 
 })();

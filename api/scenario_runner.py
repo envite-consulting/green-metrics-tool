@@ -5,7 +5,7 @@ from xml.sax.saxutils import escape as xml_escape
 from datetime import date, datetime, timedelta
 import pprint
 
-from fastapi import APIRouter, Response, Depends
+from fastapi import APIRouter, HTTPException, Response, Depends
 from fastapi.responses import ORJSONResponse
 from fastapi.exceptions import RequestValidationError
 
@@ -195,9 +195,16 @@ async def get_warnings(run_id, user: User = Depends(authenticate)):
 
 
 @router.get('/v1/network/{run_id}')
-async def get_network(run_id, user: User = Depends(authenticate)):
+async def get_network(run_id: str, user: User = Depends(authenticate)):
     if run_id is None or not is_valid_uuid(run_id):
-        raise RequestValidationError('Run ID is not a valid UUID or empty')
+        return ORJSONResponseObjKeep({'success': False, 'data': 'Run ID is not a valid UUID or empty'}, status_code=422)
+
+    run_exists = DB().fetch_one(
+        "SELECT 1 FROM runs WHERE id = %s",
+        params=(run_id,)
+    )
+    if not run_exists:
+        return ORJSONResponseObjKeep({'success': False, 'data': 'Run not found'}, status_code=404)
 
     query = '''
             SELECT ni.*
@@ -207,9 +214,12 @@ async def get_network(run_id, user: User = Depends(authenticate)):
                 (TRUE = %s OR r.user_id = ANY(%s::int[]))
                 AND ni.run_id = %s
             ORDER BY ni.time
-    '''
+        '''
     params = (user.is_super_user(), user.visible_users(), run_id)
     data = DB().fetch_all(query, params=params)
+
+    if data is None or data == []:
+        return Response(status_code=204) # No-Content
 
     return ORJSONResponseObjKeep({'success': True, 'data': data})
 
@@ -268,11 +278,11 @@ def old_v1_runs_endpoint():
 
 # A route to return all of the available entries in our catalog.
 @router.get('/v2/runs')
-async def get_runs(uri: str | None = None, branch: str | None = None, machine_id: int | None = None, machine: str | None = None, filename: str | None = None, job_id: int | None = None, failed: bool | None = None, limit: int | None = 50, uri_mode = 'none', user: User = Depends(authenticate)):
+async def get_runs(uri: str | None = None, branch: str | None = None, machine_id: int | None = None, machine: str | None = None, filename: str | None = None, usage_scenario_variables: str | None = None, job_id: int | None = None, failed: bool | None = None, limit: int | None = 50, uri_mode = 'none', user: User = Depends(authenticate)):
 
     query = '''
             SELECT r.id, r.name, r.uri, r.branch, r.created_at,
-            (SELECT COUNT(id) FROM warnings as w WHERE w.run_id = r.id) as invalid_run,
+            (SELECT COUNT(id) FROM warnings as w WHERE w.run_id = r.id) as warnings,
             r.filename, r.usage_scenario_variables, m.description, r.commit_hash, r.end_measurement, r.failed, r.machine_id
             FROM runs as r
             LEFT JOIN machines as m on r.machine_id = m.id
@@ -304,6 +314,13 @@ async def get_runs(uri: str | None = None, branch: str | None = None, machine_id
     if machine:
         query = f"{query} AND m.description LIKE %s \n"
         params.append(f"%{machine}%")
+
+    if usage_scenario_variables:
+        # This query cannot use an index because of the cast
+        # at the moment the column has no index, so it must anyway be scanned.
+        # But potential target for optimizations if schema changes
+        query = f"{query} AND r.usage_scenario_variables::text LIKE %s \n"
+        params.append(f"%{usage_scenario_variables}%")
 
     if job_id:
         query = f"{query} AND r.job_id = %s \n"
@@ -423,6 +440,8 @@ async def compare_in_repo(ids: str, force_mode:str | None = None, user: User = D
 
     except RuntimeError as err:
         raise RequestValidationError(str(err)) from err
+    except HTTPException as err:
+        return ORJSONResponseObjKeep({'success': False, 'data': err.detail}, status_code=err.status_code)
 
     if not force_mode: # force_mode must never store data
         store_artifact(ArtifactType.COMPARE, f"{user._id}_{str(ids)}", orjson.dumps(phase_stats_object)) # pylint: disable=no-member
@@ -484,7 +503,7 @@ async def get_measurements_single(run_id: str, user: User = Depends(authenticate
     return ORJSONResponseObjKeep({'success': True, 'data': data})
 
 @router.get('/v1/timeline')
-async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = None, filename: str | None = None, start_date: date | None = None, end_date: date | None = None, metric: str | None = None, phase: str | None = None, sorting: str | None = None, user: User = Depends(authenticate)):
+async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = None, filename: str | None = None, usage_scenario_variables: str | None = None, start_date: date | None = None, end_date: date | None = None, metric: str | None = None, phase: str | None = None, sorting: str | None = None, user: User = Depends(authenticate)):
     if uri is None or uri.strip() == '':
         raise RequestValidationError('URI is empty')
 
@@ -493,7 +512,7 @@ async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = Non
 
     check_int_field_api(machine_id, 'machine_id', 1024) # can cause exception
 
-    query, params = get_timeline_query(user, uri, filename, machine_id, branch, metric, phase, start_date=start_date, end_date=end_date, sorting=sorting)
+    query, params = get_timeline_query(user, uri, filename, usage_scenario_variables, machine_id, branch, metric, phase, start_date=start_date, end_date=end_date, sorting=sorting)
 
     data = DB().fetch_all(query, params=params)
 
@@ -510,7 +529,7 @@ async def get_timeline_stats(uri: str, machine_id: int, branch: str | None = Non
 ## an unexpected result because they occur at same timepoints but the trend assumes them to be at sequential timepoints.
 ## You might get unexpected results, but generally it is desireable to have a regression of all CPU cores for instance forthe cpu energy reporter
 @router.get('/v1/badge/timeline')
-async def get_timeline_badge(metric: str, uri: str, detail_name: str | None = None, machine_id: int | None = None, branch: str | None = None, filename: str | None = None, unit: str = 'watt-hours', user: User = Depends(authenticate)):
+async def get_timeline_badge(metric: str, uri: str, detail_name: str | None = None, machine_id: int | None = None, branch: str | None = None, filename: str | None = None, usage_scenario_variables: str | None = None, unit: str = 'watt-hours', user: User = Depends(authenticate)):
     if uri is None or uri.strip() == '':
         raise RequestValidationError('URI is empty')
 
@@ -530,7 +549,7 @@ async def get_timeline_badge(metric: str, uri: str, detail_name: str | None = No
 
     date_30_days_ago = datetime.now() - timedelta(days=30)
 
-    query, params = get_timeline_query(user, uri, filename, machine_id, branch, metric, '[RUNTIME]', detail_name=detail_name, start_date=date_30_days_ago.strftime('%Y-%m-%d'), end_date=datetime.now())
+    query, params = get_timeline_query(user, uri, filename, usage_scenario_variables, machine_id, branch, metric, '[RUNTIME]', detail_name=detail_name, start_date=date_30_days_ago.strftime('%Y-%m-%d'), end_date=datetime.now())
 
     # query already contains user access check. No need to have it in aggregate query too
     query = f"""
@@ -784,8 +803,10 @@ def old_v1_run_endpoint():
 async def get_run(run_id: str, user: User = Depends(authenticate)):
     if run_id is None or not is_valid_uuid(run_id):
         raise RequestValidationError('Run ID is not a valid UUID or empty')
-
-    data = get_run_info(user, run_id)
+    try:
+        data = get_run_info(user, run_id)
+    except HTTPException as err:
+        return ORJSONResponseObjKeep({'success': False, 'data': err.detail}, status_code=err.status_code)
 
     if data is None or data == []:
         return Response(status_code=204) # No-Content
