@@ -68,6 +68,20 @@ python3 runner.py --name "Spring REST Football - Microservices (APIs)" --uri "ht
 
 *Hinweis: Die Energiemessung wird hier mit "kalten" JVMs durchgeführt, d.h. die Applikationen in der Laufzeitumgebung wurden noch nicht just-in-time optimiert.*
 
+### System unter Last
+
+Nur einzelne Anfragen zu messen kann zu Schwankungen führen. Für Regressionstests ist es i.d.R. ratsam, das System unter Last zu setzen.
+
+Als Lastgenerator nutzen wir [Artillery](https://www.artillery.io/). Das Lastszenario ist in den Repositories jeweils in den Dateien `client/artillery_gmt_warm_up.yml` und `client/artillery_gmt_load.yml` definiert.
+
+Energiemessung System unter Last:
+
+```sh
+python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+```
+
+---
+
 ### Vergleich Modulith vs. Microservices
 
 *Hier geht es weiter in Kapitel 6 "Softwarearchitektur"...*
@@ -91,7 +105,7 @@ Energiemessung Modulith:
 python3 runner.py --name "Spring REST Football - Modulith (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
-Energiemessung Microservices:
+Energiemessung Microservices (entspricht dem Befehl von oben für 'Energiemessung System unter Last'):
 
 ```sh
 python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
