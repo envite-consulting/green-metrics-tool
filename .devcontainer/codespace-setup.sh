@@ -6,7 +6,7 @@ sudo apt -o Acquire::http::ConnectTimeout=10 -o Acquire::https::ConnectTimeout=1
 
 sudo setfacl -bk /tmp
 
-/workspaces/green-metrics-tool/install_linux.sh -p testpw -a "https://${CODESPACE_NAME}-9142.app.github.dev" -m "https://${CODESPACE_NAME}-9143.app.github.dev" -T -I -S -L -z -Z -f -j -g -d --tz Europe/Berlin --disable-path-security --no-elephant --no-software-view
+/workspaces/green-metrics-tool/install_linux.sh -p testpw -a "https://${CODESPACE_NAME}-9142.app.github.dev" -m "https://${CODESPACE_NAME}-9143.app.github.dev" -T -I -S -L -z -Z -f -J -j -g -d --tz Europe/Berlin --disable-path-security --no-elephant --no-software-view
 
 source .venv/bin/activate
 
