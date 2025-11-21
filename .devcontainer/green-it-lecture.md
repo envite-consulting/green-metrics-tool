@@ -1,4 +1,4 @@
-# iSAQB GREEN - Green Metrics Tool
+# Green IT Kurs
 
 Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe vom Green Metrics Tool (GMT).
 
@@ -86,11 +86,7 @@ Energiemessung System unter Last:
 python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
----
-
 ### Vergleich Modulith vs. Microservices
-
-*Hier geht es weiter in Kapitel 6 "Softwarearchitektur"...*
 
 Die Demoapplikation existiert in zwei Varianten, die wir in Bezug auf ihren Energieverbrauch in einem Lastszenario miteinander vergleichen möchten:
 

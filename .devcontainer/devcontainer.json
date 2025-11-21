@@ -12,7 +12,7 @@
     "customizations": {
         "codespaces": {
             "openFiles": [
-                ".devcontainer/iSAQB-GREEN.md"
+                ".devcontainer/green-it-lecture.md"
             ]
         },
         "vscode": {
