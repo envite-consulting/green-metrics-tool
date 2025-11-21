@@ -46,10 +46,41 @@ Alternativ lässt sich das Frontend vom Green Metrics Tool wie folgt aufrufen:
 - Tab "Ports" öffnen
 - Adresse mit dem Port "9143" öffnen (öffnet sich in einem neuen Tab)
 
+## KADAI
+
+In der Vorlesung haben wir bereits KADAI kennengelernt. Es ist ein Open Source Task-Management-System für Unternehmen, welches im Oktober 2025 den Blauen Engel für Software verliehen bekommen hat. Wir wollen hier nun die Messung, die für die Zertifizierung genutzt wurde, wiederholen:
+
+```sh
+python3 runner.py --name "KADAI - Standard Usage Scenario" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/kadai/kadai-resource-efficiency" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+```
+
+Alternativ kann auch zunächst das Git-Repository geklont werden (optional):
+
+```sh
+git clone https://gitlab.com/envite-consulting/sustainable-software-architecture/kadai/kadai-resource-efficiency
+python3 runner.py --name "KADAI - Standard Usage Scenario" --uri "/workspaces/green-metrics-tool/kadai-resource-efficiency" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+```
+
+### Analyse
+
+Welche Erkenntnisse lassen sich aus der Messung ableiten?
+
+Lässt sich an den Ergebnissen erkennen, dass es sich um eine modellbasierte Energieabschätzung handelt?
+
+### Abtastrate
+
+In der Datei [config.yml](../config.yml) befindet sich die Konfiguration von GMT. Hier können auch die diversen "Metric Provider" aktiviert/deaktiviert werden und konfiguriert werden. Hierzu gehört auch die Abtastrate.
+Wir möchten uns nun anschauen, wie sich die Abtastrate auf die Ergebnisse auswirkt.
+
+Der folgende Befehl ändert die Abtastrate von allen Metric Providern von 99ms auf 1000ms:
+
+```sh
+sed -i 's/sampling_rate: 99/sampling_rate: 1000/' /workspaces/green-metrics-tool/config.yml
+```
+
 ## Spring REST Football
 
-Nun möchten wir eine realistischere Anwendung untersuchen.
-Hierfür nutzen wir eine von uns vorbereitete Spring Boot Demoapplikation namens "Spring REST Football":
+Als nächstes möchten wir eine kleine Microservices-Anwendung vermessen. Hierfür nutzen wir eine von uns vorbereitete Spring Boot Demoapplikation namens "Spring REST Football":
 [spring-rest-football-services](https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services)
 
 Die Anwendung besteht aus zwei Microservices, die Informationen zu Fußball-Spielern und –Clubs bereitstellt.
