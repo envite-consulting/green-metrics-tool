@@ -22,6 +22,18 @@ Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine 
 source venv/bin/activate
 ```
 
+### Neustart Codespaces-Umgebung
+
+Hinweis: Falls die Codespaces-Umgebung gestoppt und später neu gestartet wird, sollten anschließend die folgenden Befehle ausgeführt werden:
+
+```sh
+docker compose -f docker/compose.yml up -d
+gh codespace ports visibility 9142:public -c $CODESPACE_NAME
+gh codespace ports visibility 9143:public -c $CODESPACE_NAME
+```
+
+Bei Problemen siehe [troubleshooting.md](./troubleshooting.md).
+
 ## Erste simple Energiemessung
 
 Für eine erste kurze Energiemessung kann folgender Befehl genutzt werden:
@@ -76,6 +88,14 @@ Der folgende Befehl ändert die Abtastrate von allen Metric Providern von 99ms a
 
 ```sh
 sed -i 's/sampling_rate: 99/sampling_rate: 1000/' /workspaces/green-metrics-tool/config.yml
+```
+
+Wie verändern sich die Messgraphen?
+
+Befehl zum rückgängig machen:
+
+```sh
+sed -i 's/sampling_rate: 1000/sampling_rate: 99/' /workspaces/green-metrics-tool/config.yml
 ```
 
 ## Spring REST Football
