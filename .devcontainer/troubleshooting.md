@@ -25,3 +25,11 @@ then ensure that the Docker containers of GMT are running.
 ```sh
 docker compose -f docker/compose.yml up -d
 ```
+
+## Low space
+
+If you get a warning from GitHub Codespaces that the space is almost full, consider removing Docker volumes:
+
+```sh
+docker system prune --volumes
+```
