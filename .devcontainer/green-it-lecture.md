@@ -137,3 +137,9 @@ Energiemessung System unter Last:
 ```sh
 python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
+
+### Vergleich Monolith vs. Microservices
+
+*Hier geht es in der Vorlesung zu "Architektur" weiter...*
+
+[→ Modulith vs. Microservices](./modulith-vs-microservices.md)
