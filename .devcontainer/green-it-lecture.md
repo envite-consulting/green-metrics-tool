@@ -30,6 +30,7 @@ Hinweis: Falls die Codespaces-Umgebung gestoppt und später neu gestartet wird, 
 docker compose -f docker/compose.yml up -d
 gh codespace ports visibility 9142:public -c $CODESPACE_NAME
 gh codespace ports visibility 9143:public -c $CODESPACE_NAME
+source venv/bin/activate
 ```
 
 Bei Problemen siehe [troubleshooting.md](./troubleshooting.md).
