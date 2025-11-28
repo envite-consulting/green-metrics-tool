@@ -22,6 +22,24 @@ Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine 
 source venv/bin/activate
 ```
 
+### Konfiguration
+
+In der Datei [config.yml](../config.yml) befindet sich die Konfiguration von GMT. Hier können auch die diversen "Metric Provider" aktiviert/deaktiviert werden und konfiguriert werden.
+
+Aktuell sind 6 Metric Provider aktiviert:
+- `CpuUtilizationProcfsSystemProvider` -> CPU % vom System
+- `CpuUtilizationCgroupContainerProvider` -> CPU % der Container
+- `MemoryUsedCgroupContainerProvider` -> RAM-Verbrauch der Container
+- `NetworkIoCgroupContainerProvider` -> Netzwerk-Auslastung der Container
+- `DiskIoCgroupContainerProvider` -> Speicher-Verbrauch der Container
+- `PsuEnergyAcXgboostMachineProvider` -> Energieverbrauch des Systems (approximiert mit einem ML-Modell)
+
+Standardmäßig ist die Abtastrate (Sampling Rate) auf 99ms gestellt. Innerhalb von GitHub Codespaces können die Metric Provier manchmal diese Abtastrate nicht einhalten, so dass es zu einem Fehler kommt. Wir setzen diese deshalb nun auf 250ms, was für unsere Testmessungen ausreichend ist.
+
+```sh
+sed -i 's/sampling_rate: 99/sampling_rate: 250/' /workspaces/green-metrics-tool/config.yml
+```
+
 ### Neustart Codespaces-Umgebung
 
 Hinweis: Falls die Codespaces-Umgebung gestoppt und später neu gestartet wird, sollten anschließend die folgenden Befehle im Terminal ausgeführt werden:
@@ -35,6 +53,8 @@ source venv/bin/activate
 ```
 
 Bei Problemen siehe [troubleshooting.md](./troubleshooting.md).
+
+---
 
 ## Erste simple Energiemessung
 
@@ -60,6 +80,8 @@ Alternativ lässt sich das Frontend vom Green Metrics Tool wie folgt aufrufen:
 - Tab "Ports" öffnen
 - Adresse mit dem Port "9143" öffnen (öffnet sich in einem neuen Tab)
 
+---
+
 ## KADAI
 
 In der Vorlesung haben wir bereits KADAI kennengelernt. Es ist ein Open Source Task-Management-System für Unternehmen, welches im Oktober 2025 den Blauen Engel für Software verliehen bekommen hat. Wir wollen hier nun die Messung, die für die Zertifizierung genutzt wurde, wiederholen:
@@ -81,24 +103,7 @@ Welche Erkenntnisse lassen sich aus der Messung ableiten?
 
 Lässt sich an den Ergebnissen erkennen, dass es sich um eine modellbasierte Energieabschätzung handelt?
 
-### Abtastrate
-
-In der Datei [config.yml](../config.yml) befindet sich die Konfiguration von GMT. Hier können auch die diversen "Metric Provider" aktiviert/deaktiviert werden und konfiguriert werden. Hierzu gehört auch die Abtastrate.
-Wir möchten uns nun anschauen, wie sich die Abtastrate auf die Ergebnisse auswirkt.
-
-Der folgende Befehl ändert die Abtastrate von allen Metric Providern von 99ms auf 1000ms:
-
-```sh
-sed -i 's/sampling_rate: 99/sampling_rate: 1000/' /workspaces/green-metrics-tool/config.yml
-```
-
-Wie verändern sich die Messgraphen?
-
-Befehl zum rückgängig machen:
-
-```sh
-sed -i 's/sampling_rate: 1000/sampling_rate: 99/' /workspaces/green-metrics-tool/config.yml
-```
+---
 
 ## Spring REST Football
 
