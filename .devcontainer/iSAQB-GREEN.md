@@ -1,4 +1,4 @@
-# iSAQB GREEN - Green Metrics Tool
+# iSAQB GREEN Kurs
 
 Dieser GitHub Codespace dient zur Ausführung von Energiemessungen mithilfe vom Green Metrics Tool (GMT).
 
@@ -21,6 +21,25 @@ Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine 
 ```sh
 source venv/bin/activate
 ```
+
+### Konfiguration
+
+In der Datei [config.yml](../config.yml) befindet sich die Konfiguration von GMT. Hier können auch die diversen "Metric Provider" aktiviert/deaktiviert werden und konfiguriert werden.
+Es sind bereits all jene Metric Provider aktiviert, die innerhalb von GitHub Codespaces funktionieren:
+- `CpuUtilizationProcfsSystemProvider` -> CPU % vom System
+- `CpuUtilizationCgroupContainerProvider` -> CPU % der Container
+- `MemoryUsedCgroupContainerProvider` -> RAM-Verbrauch der Container
+- `NetworkIoCgroupContainerProvider` -> Netzwerk-Auslastung der Container
+- `DiskIoCgroupContainerProvider` -> Speicher-Verbrauch der Container
+- `PsuEnergyAcXgboostMachineProvider` -> Energieverbrauch des Systems (approximiert mit einem ML-Modell)
+
+Standardmäßig ist die Abtastrate (Sampling Rate) auf 99ms gestellt. Innerhalb von GitHub Codespaces können die Metric Provier manchmal diese Abtastrate nicht einhalten, so dass es zu einem Fehler kommt. Wir setzen diese deshalb nun auf 250ms, was für unsere Testmessungen ausreichend ist.
+
+```sh
+sed -i 's/sampling_rate: 99/sampling_rate: 250/' /workspaces/green-metrics-tool/config.yml
+```
+
+---
 
 ## Erste simple Energiemessung
 
