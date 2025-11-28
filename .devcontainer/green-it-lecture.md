@@ -24,9 +24,10 @@ source venv/bin/activate
 
 ### Neustart Codespaces-Umgebung
 
-Hinweis: Falls die Codespaces-Umgebung gestoppt und später neu gestartet wird, sollten anschließend die folgenden Befehle ausgeführt werden:
+Hinweis: Falls die Codespaces-Umgebung gestoppt und später neu gestartet wird, sollten anschließend die folgenden Befehle im Terminal ausgeführt werden:
 
 ```sh
+git pull # nur relevant falls es Änderungen an diesem Dokument gab
 docker compose -f docker/compose.yml up -d
 gh codespace ports visibility 9142:public -c $CODESPACE_NAME
 gh codespace ports visibility 9143:public -c $CODESPACE_NAME
