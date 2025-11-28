@@ -25,8 +25,7 @@ source venv/bin/activate
 ### Konfiguration
 
 In der Datei [config.yml](../config.yml) befindet sich die Konfiguration von GMT. Hier können auch die diversen "Metric Provider" aktiviert/deaktiviert werden und konfiguriert werden.
-
-Aktuell sind 6 Metric Provider aktiviert:
+Es sind bereits all jene Metric Provider aktiviert, die innerhalb von GitHub Codespaces funktionieren:
 - `CpuUtilizationProcfsSystemProvider` -> CPU % vom System
 - `CpuUtilizationCgroupContainerProvider` -> CPU % der Container
 - `MemoryUsedCgroupContainerProvider` -> RAM-Verbrauch der Container
@@ -39,6 +38,8 @@ Standardmäßig ist die Abtastrate (Sampling Rate) auf 99ms gestellt. Innerhalb 
 ```sh
 sed -i 's/sampling_rate: 99/sampling_rate: 250/' /workspaces/green-metrics-tool/config.yml
 ```
+
+---
 
 ### Neustart Codespaces-Umgebung
 
