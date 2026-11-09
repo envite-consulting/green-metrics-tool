@@ -46,7 +46,7 @@ sed -i 's/sampling_rate: 99/sampling_rate: 250/' /workspaces/green-metrics-tool/
 Für eine erste kurze Energiemessung kann folgender Befehl genutzt werden:
 
 ```sh
-python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --skip-system-checks --measurement-baseline-duration=5 --measurement-idle-duration=5
+python3 runner.py --name "Simple Stress Test" --uri "/workspaces/green-metrics-tool/example-applications/" --filename "stress/usage_scenario.yml" --dev-no-system-checks --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 `runner.py` ist ein Bestandteil vom Green Metrics Tool, welches für die Koordination des gesamten Ablaufs einer Messung zuständig ist. Hier wird das Nutzungsszenario `stress/usage_scenario.yml` aus dem lokalen Ordner `/workspaces/green-metrics-tool/example-applications` genutzt:
@@ -88,7 +88,7 @@ Spielerinformationen beinhalten Informationen zum Club. Um diese Informationen z
 Hier möchten wir den Energieverbrauch der vier bereitgestellten Endpunkte vergleichen:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Microservices (APIs)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-all-endpoints.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+python3 runner.py --name "Spring REST Football - Microservices (APIs)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-all-endpoints.yml" --dev-no-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 *Hinweis: Die Energiemessung wird hier mit "kalten" JVMs durchgeführt, d.h. die Applikationen in der Laufzeitumgebung wurden noch nicht just-in-time optimiert.*
@@ -102,7 +102,7 @@ Als Lastgenerator nutzen wir [Artillery](https://www.artillery.io/). Das Lastsze
 Energiemessung System unter Last:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --dev-no-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 ---
@@ -127,13 +127,13 @@ source venv/bin/activate
 Energiemessung Modulith:
 
 ```sh
-python3 runner.py --name "Spring REST Football - Modulith (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+python3 runner.py --name "Spring REST Football - Modulith (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-modulith" --filename "usage_scenario-load.yml" --dev-no-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 Energiemessung Microservices (entspricht dem Befehl von oben für 'Energiemessung System unter Last'):
 
 ```sh
-python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --skip-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
+python3 runner.py --name "Spring REST Football - Microservices (Load Test)" --uri "https://gitlab.com/envite-consulting/sustainable-software-architecture/isaqb-green/spring-rest-football-services" --filename "usage_scenario-load.yml" --dev-no-system-checks --skip-unsafe --measurement-baseline-duration=5 --measurement-idle-duration=5
 ```
 
 Die Ergebnisse lassen sich wieder im GMT-Frontend betrachten.
