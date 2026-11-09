@@ -19,7 +19,7 @@ Die Ausführung des Skripts benötigt etwa 5 Minuten. Es werden das Green Metric
 Führen Sie anschließend noch folgenden Befehl im Terminal aus (aktiviert eine virtuelle Umgebung für Python, was für die Ausführung von GMT benötigt wird):
 
 ```sh
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 ### Konfiguration
@@ -121,7 +121,7 @@ Als Lastgenerator nutzen wir [Artillery](https://www.artillery.io/). Das Lastsze
 Bevor die Energiemessung gestartet werden kann, stellen Sie sicher, dass die virtuelle Umgebung für Python im Terminal aktiviert ist:
 
 ```sh
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 Energiemessung Modulith:
